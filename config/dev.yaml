@@ -11,12 +11,12 @@ storage:
   #conn: "host=127.0.0.1 port=5432 user=clock dbname=clock password=clock sslmode=disable"
 
   # sqlite
-  #backend: "sqlite3"
-  #conn: "clock.db"
+  backend: "sqlite3"
+  conn: "clock.db"
 
   # mysql
-  backend: "mysql"
-  conn: "clock:aabbccdd.com@tcp(127.0.0.1:3307)/clock?charset=utf8&parseTime=True&loc=Local"
+  #backend: "mysql"
+  #conn: "clock:aabbccdd.com@tcp(127.0.0.1:3307)/clock?charset=utf8&parseTime=True&loc=Local"
 
 login:
   user: "admin"

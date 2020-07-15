@@ -24,30 +24,22 @@ Options:
 	flag.PrintDefaults()
 }
 
-func setFlag() {
-	flag.StringVar(&filePath, "c", "./config.yaml", "根目录所在")
+func main() {
+	flag.StringVar(&filePath, "c", "./config.yaml", "配置文件所在")
 	flag.BoolVar(&help, "h", false, "帮助")
 	flag.Usage = usage
 	flag.Parse()
-
 	if help {
 		flag.PrintDefaults()
+		return
 	}
-}
 
-
-func prepare()  {
-	setFlag()
+	// 设置配置文件和静态变量
 	config.SetConfig(filePath)
 	param.SetStatic()
 	storage.SetDb()
-}
-
-func main() {
-	prepare()
 
 	defer storage.Db.Close()
-
 	address := config.Config.GetString("server.host")
 	if address == "" {
 		logrus.Fatal("can not find any server host config")
