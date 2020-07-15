@@ -5,6 +5,9 @@
 ## Clock
 基于go cron的可视化调度轻量级调度框架，支持DAG任务依赖，支持bash命令，前端及后端编译完成(基于packr2)后仅有一个二进制文件，轻松部署
 
+## 地址
+https://github.com/BruceDone/clock
+
 ## 环境
 * 后端
     * go 1.13+
@@ -71,14 +74,14 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
 ### 添加任务容器
 ![fathertask](https://user-images.githubusercontent.com/12979090/86567720-6779e080-bf9e-11ea-9168-18dc751d730e.jpg)
 
-点击新增，调度表达式这里支持cron和@every语法，各多语法请参考:[cron](https://github.com/robfig/cron)
+点击新增，调度表达式这里支持cron和@every语法，更多语法请参考:[cron](https://github.com/robfig/cron)
 
 ### 点击配置进入子任务配置界面
 ![taskdag](https://user-images.githubusercontent.com/12979090/86567779-7a8cb080-bf9e-11ea-8622-fc924f4a5ba8.jpg)
 
 点击任务编辑下的新增，选中新增的节点，编辑任务bash命令，任务名，是否保存日志，及任务超时时间(小技巧:选中画板空白处为新增，选中节点为编辑状态)，可以自由编辑节点(任务)之间的关系，摆好位置之后选择保存
 
-### 查看后台任输出日志
+### 查看后台任务输出日志
 ![status](https://user-images.githubusercontent.com/12979090/86567810-84aeaf00-bf9e-11ea-82b6-4bd585d7df7c.jpg)
 
 ### 查看持久化的日志
