@@ -4,3 +4,5 @@ clock-mac-64
 clock-win-64.exe
 build.sh
 clock.db
+bin
+./clock.db
