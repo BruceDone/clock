@@ -9,6 +9,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/gobuffalo/packr/v2 v2.8.0
+	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/jinzhu/gorm v1.9.14
 	github.com/karrick/godirwalk v1.15.6 // indirect
 	github.com/labstack/echo/v4 v4.1.16

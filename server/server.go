@@ -16,7 +16,10 @@ import (
 func addApi(e *echo.Echo) {
 	// 增加cors 中间件
 	e.Use(middleware.CORS())
-	e.Use(middleware.Logger())
+	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+		Format:           "[${status}] - ${method} - ${uri} - ${query} - ${form}\n",
+		CustomTimeFormat: "2006-01-02 15:04:05.00000",
+	}))
 	e.Use(middleware.Recover())
 
 	// 使用jwt token验证
