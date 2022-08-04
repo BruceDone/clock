@@ -2,7 +2,7 @@
 clock-linux-64
 clock-mac-64
 clock-win-64.exe
+clock
 build.sh
 clock.db
 bin
-./clock.db
