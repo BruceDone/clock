@@ -1,4 +1,5 @@
 .idea
+.vscode
 clock-linux-64
 clock-mac-64
 clock-win-64.exe
