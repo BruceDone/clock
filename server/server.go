@@ -88,7 +88,7 @@ func createJWTConfig() middleware.JWTConfig {
 	d := middleware.DefaultJWTConfig
 
 	d.SigningKey = []byte(param.WebJwt)
-	d.TokenLookup = "header:token"
+	d.TokenLookup = "header:token:duckduckgo "
 	d.AuthScheme = "duckduckgo"
 
 	filterUri := []string{"webapp", "js", "css"}
