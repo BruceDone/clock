@@ -6,7 +6,8 @@
 基于go cron的可视化调度轻量级调度框架，支持DAG任务依赖，支持bash命令，前端及后端编译完成(基于packr2)后仅有一个二进制文件，轻松部署
 
 ## 地址
-https://github.com/BruceDone/clock
+* 后台: https://github.com/BruceDone/clock
+* 前台: https://github.com/BruceDone/clock-admin
 
 ## 环境
 * 后端
