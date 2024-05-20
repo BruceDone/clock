@@ -11,7 +11,7 @@
 
 ## 环境
 * 后端
-    * go 1.13+
+    * go 1.20
     * [packr](https://github.com/gobuffalo/packr) - 静态文件打包
     * [cron](https://github.com/robfig/cron) - 定时调度器
     * [echo](https://github.com/labstack/echo)

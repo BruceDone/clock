@@ -1,21 +1,20 @@
 package storage
 
 import (
+	"clock/config"
+	"clock/param"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
 	"github.com/fatih/structs"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/mysql"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/glebarez/sqlite"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
-
-	"clock/config"
-	"clock/param"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 var (
@@ -30,6 +29,13 @@ const (
 	START
 	SUCCESS
 	FAILURE
+)
+
+// current support sqlite3, mysql, postgres
+const (
+	DB_BACKEND_SQLITE3 = "sqlite3"
+	DB_BACKEND_MYSQL   = "mysql"
+	DB_BACKEND_POSTGRE = "postgres"
 )
 
 type (
@@ -84,7 +90,7 @@ type (
 	Page struct {
 		Count   int    `json:"count"`
 		Index   int    `json:"index"`
-		Total   int    `json:"total"`
+		Total   int64  `json:"total"`
 		Order   string `json:"order"`
 		LeftTs  int64  `json:"left_ts" query:"left_ts"`
 		RightTs int64  `json:"right_ts" query:"right_ts"`
@@ -154,10 +160,20 @@ func SetDb() {
 	}
 
 	var err error
-	Db, err = gorm.Open(backend, conn)
+
+	switch backend {
+	case DB_BACKEND_SQLITE3:
+		Db, err = gorm.Open(sqlite.Open(conn), &gorm.Config{})
+	case DB_BACKEND_MYSQL:
+		Db, err = gorm.Open(mysql.Open(conn), &gorm.Config{})
+	case DB_BACKEND_POSTGRE:
+		Db, err = gorm.Open(postgres.Open(conn), &gorm.Config{})
+	default:
+		logrus.Fatalf("not support the backend %v", backend)
+	}
 
 	if err != nil {
-		logrus.Fatal(err)
+		logrus.Fatalf("connect to db: %s, error: %v", backend, err)
 	}
 
 	Db.AutoMigrate(&Task{}, &Container{}, &TaskLog{}, &Relation{})
@@ -355,7 +371,7 @@ func DeleteLogs(query *LogQuery) error {
 		queryDB = queryDB.Where("update_at < ?", query.RightTs)
 	}
 
-	queryDB.LogMode(true)
+	// queryDB.LogMode(true)
 	return queryDB.Delete(TaskLog{}).Error
 }
 

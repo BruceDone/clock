@@ -7,8 +7,9 @@ import (
 	"clock/storage"
 	"flag"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"os"
+
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -39,7 +40,6 @@ func main() {
 	param.SetStatic()
 	storage.SetDb()
 
-	defer storage.Db.Close()
 	address := config.Config.GetString("server.host")
 	if address == "" {
 		logrus.Fatal("can not find any server host config")
