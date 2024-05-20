@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"time"
 
-	"clock/param"
-	"clock/storage"
-
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/websocket"
+
+	"clock/param"
+	"clock/storage"
 )
 
 func getPathInt(c echo.Context, key string) (int, error) {

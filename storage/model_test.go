@@ -2,8 +2,9 @@ package storage
 
 import (
 	"fmt"
-	"github.com/fatih/structs"
 	"testing"
+
+	"github.com/fatih/structs"
 )
 
 func TestFindOne(t *testing.T) {

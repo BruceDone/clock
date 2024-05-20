@@ -2,7 +2,6 @@ package controller
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/load"
 	"github.com/shirou/gopsutil/mem"
+	"github.com/sirupsen/logrus"
 
 	"clock/param"
 )

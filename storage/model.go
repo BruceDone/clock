@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"clock/config"
-	"clock/param"
 	"fmt"
 	"log"
 	"os"
@@ -15,6 +13,9 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"clock/config"
+	"clock/param"
 )
 
 var (
