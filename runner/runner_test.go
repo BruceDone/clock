@@ -29,7 +29,6 @@ func TestSelect(t *testing.T) {
 	ch1 := make(chan int, 1)
 	ch2 := make(chan int, 1)
 
-
 	select {
 	case e1 := <-ch1:
 		t.Logf("got 1 case1 %v", e1)

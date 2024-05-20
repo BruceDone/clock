@@ -1,7 +1,6 @@
 package server
 
 import (
-	"clock/param"
 	"net/http"
 	"strings"
 
@@ -11,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"clock/controller"
+	"clock/param"
 )
 
 func addApi(e *echo.Echo) {

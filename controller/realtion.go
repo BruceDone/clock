@@ -92,7 +92,7 @@ func AddRelation(c echo.Context) error {
 	relations = append(relations, r)
 
 	// 存在闭环, 删除当前关系
-	if circle := storage.CheckCircle(tasks,relations); circle {
+	if circle := storage.CheckCircle(tasks, relations); circle {
 		resp.Msg = fmt.Sprintf("[add realtion] check circle failed wit task: %d to task %d", r.Tid, r.NextTid)
 		logrus.Warn(resp.Msg)
 		resp.Data = -1
@@ -100,7 +100,7 @@ func AddRelation(c echo.Context) error {
 		return c.JSON(http.StatusOK, resp)
 	}
 
-	if err := storage.Db.Save(&r).Error ; err != nil{
+	if err := storage.Db.Save(&r).Error; err != nil {
 		resp.Msg = fmt.Sprintf("[add realtion] error to add relation: %v", err)
 		logrus.Error(resp.Msg)
 
