@@ -1,17 +1,21 @@
 package server
 
 import (
+	"embed"
+	"io/fs"
+	"log"
 	"net/http"
 	"strings"
 
-	"github.com/gobuffalo/packr/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	log "github.com/sirupsen/logrus"
 
 	"clock/controller"
 	"clock/param"
 )
+
+//go:embed webapp/dist/*
+var webapp embed.FS
 
 func addApi(e *echo.Echo) {
 	// 增加cors 中间件
@@ -116,20 +120,21 @@ func createJWTConfig() middleware.JWTConfig {
 }
 
 func addApp(e *echo.Echo) {
-	webapp := packr.New("webapp", "../webapp")
-
-	app, err := webapp.FindString("index.html")
+	content, err := fs.Sub(webapp, "webapp/dist")
 	if err != nil {
-		log.Fatalf("not find the index.html of app : %v", err)
+		log.Fatalf("not find the webapp/dist: %v", err)
 	}
 
-	static := packr.New("static", "../webapp")
+	appBytes, err := fs.ReadFile(content, "index.html")
+	if err != nil {
+		log.Fatalf("not find the index.html of app: %v", err)
+	}
+	app := string(appBytes)
 
-	e.GET("/*", echo.WrapHandler(http.StripPrefix("/", http.FileServer(static))))
+	e.GET("/*", echo.WrapHandler(http.StripPrefix("/", http.FileServer(http.FS(content)))))
 	e.GET("/app", func(c echo.Context) error {
 		return c.HTML(200, app)
 	})
-
 }
 
 func CreateEngine() (*echo.Echo, error) {

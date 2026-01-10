@@ -1,6 +1,11 @@
 LDFLAGS := -s -w
 
-all: fmt build linux mac win
+all: fmt web build linux mac win
+
+web:
+	@echo "Building frontend..."
+	cd server/webapp && npm install && npm run build
+	@echo "Frontend built to server/webapp/dist"
 
 build: linux
 
@@ -21,3 +26,7 @@ win:
 
 clean:
 	rm -f ./bin/clock
+	rm -rf server/webapp/node_modules
+	rm -rf server/webapp/dist
+
+.PHONY: all build web clean fmt linux mac win

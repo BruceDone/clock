@@ -34,5 +34,7 @@ func TestSelect(t *testing.T) {
 		t.Logf("got 1 case1 %v", e1)
 	case e2 := <-ch2:
 		t.Logf("got 2 case1 %v", e2)
+	default:
+		t.Log("no data available")
 	}
 }

@@ -7,3 +7,5 @@ clock
 build.sh
 clock.db
 bin
+webapp/dist
+webapp/node_modules
