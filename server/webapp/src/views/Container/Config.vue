@@ -2,7 +2,18 @@
   <div class="container-config">
     <el-page-header @back="router.back()" style="margin-bottom: 20px">
       <template #content>
-        <span class="page-title">容器配置 - {{ container?.name }}</span>
+        <div class="page-header-content">
+          <span class="page-title">容器配置 - {{ container?.name }}</span>
+          <el-button
+            v-if="runningTasksForContainer.length > 0"
+            type="danger"
+            size="small"
+            @click="handleCancelContainerRun"
+          >
+            <el-icon><CircleClose /></el-icon>
+            取消运行 ({{ runningTasksForContainer.length }})
+          </el-button>
+        </div>
       </template>
     </el-page-header>
 
@@ -91,7 +102,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { getContainer } from '@/api/container'
-import { getTasks, putTask, deleteTask } from '@/api/task'
+import { getTasks, putTask, deleteTask, getRunningTasks, cancelRun, type RunningTaskInfo } from '@/api/task'
 import { getRelations, addRelation, deleteRelation } from '@/api/relation'
 import { putNodes } from '@/api/node'
 import type { Container, Task, RelationResponse, Link } from '@/types/model'
@@ -105,6 +116,8 @@ const container = ref<Container | null>(null)
 const tasks = ref<Task[]>([])
 const relations = ref<RelationResponse | null>(null)
 const selectedTask = ref<Task | null>(null)
+const runningTasks = ref<RunningTaskInfo[]>([])
+let refreshTimer: number | null = null
 
 const dagCanvasRef = ref<InstanceType<typeof DagCanvas>>()
 
@@ -125,6 +138,11 @@ const taskRules: FormRules = {
   name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
   command: [{ required: true, message: '请输入命令', trigger: 'blur' }]
 }
+
+// 该容器运行中的任务
+const runningTasksForContainer = computed(() => {
+  return runningTasks.value.filter(t => t.cid === cid)
+})
 
 // 转换为 DAG Canvas 需要的节点格式
 const dagNodes = computed(() => {
@@ -301,43 +319,179 @@ async function savePositions() {
   }
 }
 
+async function fetchRunningTasks() {
+  try {
+    const res = await getRunningTasks()
+    runningTasks.value = res.data || []
+  } catch (error) {
+    console.error('Failed to fetch running tasks:', error)
+  }
+}
+
+async function handleCancelContainerRun() {
+  try {
+    await ElMessageBox.confirm('确定要取消该容器的所有运行中任务吗？', '确认取消', { type: 'warning' })
+    
+    // 收集该容器的所有 runId
+    const runIds = new Set<string>()
+    const singleTasks: number[] = []
+    
+    for (const task of runningTasksForContainer.value) {
+      if (task.runId) {
+        runIds.add(task.runId)
+      } else {
+        singleTasks.push(task.tid)
+      }
+    }
+    
+    // 取消所有 run
+    for (const runId of runIds) {
+      await cancelRun(runId)
+    }
+    
+    ElMessage.success('取消请求已发送')
+    fetchRunningTasks()
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+    }
+  }
+}
+
 onMounted(() => {
   fetchData()
+  fetchRunningTasks()
+  // 定时刷新运行中任务列表
+  refreshTimer = window.setInterval(fetchRunningTasks, 5000)
+})
+
+import { onUnmounted } from 'vue'
+
+onUnmounted(() => {
+  if (refreshTimer != null) {
+    window.clearInterval(refreshTimer)
+    refreshTimer = null
+  }
 })
 </script>
 
 <style lang="scss" scoped>
 .container-config {
-  .page-title { font-size: 18px; font-weight: bold; }
-  .card-header { display: flex; justify-content: space-between; align-items: center; }
+  .page-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text-primary);
+  }
+  .page-header-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-primary);
+  }
   .graph-actions {
     display: flex;
     align-items: center;
     gap: 12px;
     .graph-tip {
       font-size: 12px;
-      color: #909399;
+      color: var(--text-muted);
     }
   }
-  .task-list { max-height: 500px; overflow-y: auto; }
+  .task-list {
+    max-height: 500px;
+    overflow-y: auto;
+  }
   .task-item {
     padding: 10px;
-    border: 1px solid #eee;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     margin-bottom: 10px;
     cursor: pointer;
     transition: all 0.3s;
-    &:hover { border-color: #409EFF; }
-    &.active { border-color: #409EFF; background: #ecf5ff; }
-    .task-name { font-weight: bold; margin-bottom: 5px; }
+    background: var(--bg-card);
+
+    &:hover {
+      border-color: var(--primary-color);
+      background: rgba(var(--primary-color), 0.05);
+    }
+    &.active {
+      border-color: var(--primary-color);
+      background: rgba(var(--primary-color), 0.1);
+    }
+    .task-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: var(--text-primary);
+    }
     .task-command {
       font-size: 12px;
-      color: #666;
+      color: var(--text-secondary);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
   }
-  .graph-container { height: 500px; border: 1px solid #eee; }
+  .graph-container {
+    height: 500px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+  }
+}
+
+// 对话框样式适配
+:deep(.el-dialog) {
+  background: var(--bg-card) !important;
+
+  .el-dialog__header {
+    color: var(--text-primary);
+  }
+
+  .el-dialog__body {
+    color: var(--text-primary);
+  }
+
+  .el-form-item__label {
+    color: var(--text-secondary) !important;
+  }
+
+  .el-input__wrapper {
+    background: var(--bg-secondary) !important;
+  }
+
+  .el-input__inner {
+    color: var(--text-primary) !important;
+  }
+
+  .el-textarea__inner {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+  }
+
+  .el-input-number {
+    .el-input__wrapper {
+      background: var(--bg-secondary) !important;
+    }
+  }
+}
+
+// 卡片样式适配
+:deep(.el-card) {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+
+  .el-card__header {
+    border-bottom-color: var(--border-color) !important;
+    color: var(--text-primary);
+  }
+
+  .el-card__body {
+    color: var(--text-primary);
+  }
 }
 </style>

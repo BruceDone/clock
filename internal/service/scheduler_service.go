@@ -73,21 +73,30 @@ func (s *schedulerService) Stop() {
 
 // AddJob 添加调度任务
 func (s *schedulerService) AddJob(container *domain.Container) error {
+	cid := container.Cid // 捕获 cid 用于闭包
+
 	runFunc := func() {
-		tasks, err := s.taskRepo.GetByCID(container.Cid)
+		// 每次执行前获取最新的 container 配置（支持运行时修改 blocking 设置）
+		currentContainer, err := s.containerRepo.GetByID(cid)
 		if err != nil {
-			logger.Errorf("[scheduler] failed to get tasks for container %d: %v", container.Cid, err)
+			logger.Errorf("[scheduler] failed to get container %d: %v", cid, err)
 			return
 		}
 
-		relations, err := s.relationRepo.GetByCID(container.Cid)
+		tasks, err := s.taskRepo.GetByCID(cid)
 		if err != nil {
-			logger.Errorf("[scheduler] failed to get relations for container %d: %v", container.Cid, err)
+			logger.Errorf("[scheduler] failed to get tasks for container %d: %v", cid, err)
 			return
 		}
 
-		if err := s.executor.RunContainer(container, tasks, relations); err != nil {
-			logger.Errorf("[scheduler] failed to run container %s: %v", container.Name, err)
+		relations, err := s.relationRepo.GetByCID(cid)
+		if err != nil {
+			logger.Errorf("[scheduler] failed to get relations for container %d: %v", cid, err)
+			return
+		}
+
+		if err := s.executor.RunContainer(currentContainer, tasks, relations); err != nil {
+			logger.Errorf("[scheduler] failed to run container %s: %v", currentContainer.Name, err)
 		}
 	}
 

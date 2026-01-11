@@ -69,6 +69,20 @@
             />
           </template>
         </el-table-column>
+        <el-table-column prop="blocking" label="阻塞运行" width="100">
+          <template #default="{ row }">
+            <el-tooltip :content="row.blocking ? '上次未完成则跳过本次调度' : '允许并发执行'" placement="top">
+              <el-switch
+                v-model="row.blocking"
+                :active-value="true"
+                :inactive-value="false"
+                active-color="#409EFF"
+                inactive-color="#5c6b7f"
+                @change="handleToggleBlocking(row)"
+              />
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
@@ -130,6 +144,13 @@
             <span>使用标准 cron 格式或 @every 语法</span>
           </div>
         </el-form-item>
+        <el-form-item label="阻塞运行">
+          <el-switch v-model="form.blocking" />
+          <div class="blocking-hint">
+            <el-icon><InfoFilled /></el-icon>
+            <span>启用后，上次调度未完成时跳过本次调度</span>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -169,7 +190,8 @@ const page = reactive({
 const formRef = ref<FormInstance>()
 const form = reactive({
   name: '',
-  expression: ''
+  expression: '',
+  blocking: true
 })
 
 const rules: FormRules = {
@@ -197,7 +219,7 @@ async function handleSubmit() {
   if (!valid) return
 
   try {
-    await putContainer({ name: form.name, expression: form.expression, cid: editingId.value })
+    await putContainer({ name: form.name, expression: form.expression, blocking: form.blocking, cid: editingId.value })
     ElMessage.success('操作成功')
     showDialog.value = false
     fetchList()
@@ -237,6 +259,16 @@ async function handleToggle(row: Container) {
   } catch (error) {
     console.error(error)
     row.disable = !row.disable
+  }
+}
+
+async function handleToggleBlocking(row: Container) {
+  try {
+    await putContainer(row)
+    ElMessage.success(row.blocking ? '已启用阻塞运行' : '已关闭阻塞运行')
+  } catch (error) {
+    console.error(error)
+    row.blocking = !row.blocking
   }
 }
 
@@ -433,7 +465,7 @@ onMounted(() => {
       background: var(--input-bg) !important;
     }
 
-    .cron-hint {
+    .cron-hint, .blocking-hint {
       display: flex;
       align-items: center;
       gap: 6px;

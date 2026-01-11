@@ -11,3 +11,5 @@ server/webapp/dist
 server/webapp/node_modules
 clock.log
 clock.db
+web
+.playwright-mcp

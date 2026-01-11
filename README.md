@@ -1,89 +1,246 @@
 <div align=center>
-<img src="https://user-images.githubusercontent.com/12979090/86565300-297abd80-bf9a-11ea-916f-b547f5023ee8.png" /> 
+<img src="docs/images/home.png" width="200" />
 </div>
 
-## Clock
-基于go cron的可视化调度轻量级调度框架，支持DAG任务依赖，支持bash命令，前端及后端编译完成(基于packr2)后仅有一个二进制文件，轻松部署
+# Clock - 任务调度平台
 
-## 地址
-* 后台: https://github.com/BruceDone/clock
-* 前台: https://github.com/BruceDone/clock-admin
+基于 Go cron 的可视化调度框架，支持 DAG 任务依赖关系和 Bash 命令执行。前后端通过 `go:embed` 打包成单个二进制文件，轻松部署。
 
-## 环境
-* 后端
-    * go 1.20
-    * [packr](https://github.com/gobuffalo/packr) - 静态文件打包
-    * [cron](https://github.com/robfig/cron) - 定时调度器
-    * [echo](https://github.com/labstack/echo)
-    * [gorm](https://github.com/jinzhu/gorm)
-* 前端
-    * vue 
-    * [iview-admin](https://github.com/iview/iview-admin)
+## 功能特性
 
-## 使用
-### 直接使用
-下载git上的release列表，根据系统下载相应的二进制文件，使用命令
+- **DAG 任务依赖管理** - 可视化编辑任务之间的依赖关系，支持拓扑排序执行
+- **定时调度** - 基于 cron 表达式的定时任务调度
+- **任务取消** - 支持取消单个任务或整个调度批次，正在执行的命令会被终止
+- **阻塞运行** - 容器级别配置，上次调度未完成时自动跳过本次，防止任务堆积
+- **实时状态监控** - SSE (Server-Sent Events) 实时推送任务执行状态
+- **日志管理** - 实时日志流式查看，历史日志持久化查询
+- **系统监控** - 内存、CPU、系统负载实时监控
+- **多主题支持** - 亮色、暗色、荧光多种主题切换
+- **JWT 认证** - 安全的身份验证机制
+- **单文件部署** - 前后端打包成一个二进制文件
+
+## 技术栈
+
+### 后端
+- Go 1.24+
+- [Echo](https://echo.labstack.com) - 高性能 Web 框架
+- [GORM](https://gorm.io) - ORM 数据库访问
+- [robfig/cron](https://github.com/robfig/cron) - 定时调度器
+- [go:embed](https://pkg.go.dev/embed) - 静态文件打包
+
+### 前端
+- Vue 3 + TypeScript
+- Element Plus - UI 组件库
+- AntV G6 - DAG 图可视化
+- ECharts - 图表展示
+- Pinia - 状态管理
+- Vue Router - 路由管理
+
+## 项目结构
+
 ```
-./clock -c ./config/dev.yaml
+clock/
+├── cmd/
+│   └── clock/
+│       └── main.go           # 程序入口
+├── configs/
+│   └── config.toml           # 配置文件
+├── internal/
+│   ├── config/               # 配置解析
+│   ├── domain/               # 领域模型
+│   │   ├── container.go      # 容器模型
+│   │   ├── task.go           # 任务模型
+│   │   ├── relation.go       # DAG 关系模型
+│   │   ├── tasklog.go        # 日志模型
+│   │   └── message.go        # 消息模型
+│   ├── handler/              # HTTP 处理器
+│   │   ├── task_handler.go
+│   │   ├── container_handler.go
+│   │   ├── log_handler.go
+│   │   ├── relation_handler.go
+│   │   ├── auth_handler.go
+│   │   └── message_handler.go
+│   ├── middleware/           # 中间件
+│   │   ├── jwt.go            # JWT 认证
+│   │   └── logger.go         # 请求日志
+│   ├── repository/           # 数据访问层
+│   │   ├── container_repo.go
+│   │   ├── task_repo.go
+│   │   ├── relation_repo.go
+│   │   └── tasklog_repo.go
+│   ├── router/               # 路由注册
+│   ├── service/              # 业务逻辑
+│   │   ├── scheduler_service.go  # 调度服务
+│   │   ├── executor.go           # 执行器
+│   │   ├── stream_hub.go         # SSE 广播
+│   │   └── message_service.go
+│   └── runner/               # 任务执行器
+├── web/
+│   └── dist/                 # 前端构建产物 (嵌入式)
+├── server/webapp/            # 前端源码
+│   ├── src/
+│   │   ├── views/            # 页面组件
+│   │   ├── api/              # API 客户端
+│   │   ├── stores/           # Pinia 状态
+│   │   └── router/           # 前端路由
+│   └── vite.config.ts
+└── docs/
+    └── images/               # 文档截图
 ```
 
-### 自己编译前后端
-将前端项目 clock-admin 下载到本地，使用命令 `npm run build`, 编译生成前端项目文件`dist`, 将后端项目 clock 下载到本地, 进入项目根目录，确保安装了packr2 ,使用如下命令
+## 快速开始
 
-```shell script
-rm -rf webapp
-mkdir -p ./webapp
-cp -r /你的clock-admin文件夹/dist/* ./webapp
-packr2 clean
-packr2
-# 根据发布的目标平台，调整如下命令
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go generate  
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
+### 1. 前端开发
+
+```bash
+cd server/webapp
+
+# 安装依赖
+npm install
+
+# 开发模式 (需要同时启动后端)
+npm run dev
+
+# 构建生产版本
+npm run build
 ```
 
-使用命令`./clock -c config/dev.yaml` 载入你的配置文件，完成后打开浏览器 `http://127.0.0.1:9528` ，输入用户名密码就可以进入管理后台
-![login](https://user-images.githubusercontent.com/12979090/86568293-3948d080-bf9f-11ea-9c19-4cf68af595a0.png)
+### 2. 后端运行
 
-## 结构
-```
-├── config - 配置文件夹,示例文件所在
-├── controller - 控制层
-├── packrd - packr2生成的静态资源
-├── param - 参数相关
-├── runner - 执行器
-├── server - view层
-├── storage - 存储相关
-└── webapp - 由clock-admin发布的前端资源
-    ├── css
-    ├── fonts
-    ├── img
-    └── js
+```bash
+# 运行开发版本
+go run cmd/clock/main.go -c configs/config.toml
+
+# 构建生产版本
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o clock cmd/clock/main.go
+
+# 运行
+./clock -c configs/config.toml
 ```
 
-## 特性与功能
-* [DAG任务关联](https://en.wikipedia.org/wiki/Dag) , 可以管理任务的前后依赖
-* 可视化管理
-* 支持多种数据库: sqlite , mysql ,postgresql
-* 前后端打包完成后只有一个二进制文件，极其方便部署
-* 跨平台
+### 3. 访问系统
 
-## 使用截图
+打开浏览器访问 http://127.0.0.1:9528
 
-### 登录进入控制台 
-![personal](https://user-images.githubusercontent.com/12979090/86567691-5c26b500-bf9e-11ea-8c3c-98a75120ce18.jpg)
+默认用户名：`admin`
+默认密码：`admin`
 
-### 添加任务容器
-![fathertask](https://user-images.githubusercontent.com/12979090/86567720-6779e080-bf9e-11ea-9168-18dc751d730e.jpg)
+## 使用流程
 
-点击新增，调度表达式这里支持cron和@every语法，更多语法请参考:[cron](https://github.com/robfig/cron)
+### 1. 登录系统
 
-### 点击配置进入子任务配置界面
-![taskdag](https://user-images.githubusercontent.com/12979090/86567779-7a8cb080-bf9e-11ea-8622-fc924f4a5ba8.jpg)
+![登录页面](docs/images/login.png)
 
-点击任务编辑下的新增，选中新增的节点，编辑任务bash命令，任务名，是否保存日志，及任务超时时间(小技巧:选中画板空白处为新增，选中节点为编辑状态)，可以自由编辑节点(任务)之间的关系，摆好位置之后选择保存
+### 2. 创建容器
 
-### 查看后台任务输出日志
-![status](https://user-images.githubusercontent.com/12979090/86567810-84aeaf00-bf9e-11ea-82b6-4bd585d7df7c.jpg)
+容器是任务组，用于管理一组相关任务的调度。
 
-### 查看持久化的日志
-![loglist](https://user-images.githubusercontent.com/12979090/86567837-8e381700-bf9e-11ea-9812-43a7189a2827.jpg)
+![容器管理](docs/images/container-list.png)
+
+- 点击「新增容器」
+- 填写容器名称和 cron 表达式
+- 配置阻塞运行选项（启用后，上次调度未完成则跳过本次）
+- 启用容器
+
+### 3. 添加任务
+
+任务是具体的 bash 命令执行单元。
+
+![任务管理](docs/images/task-list.png)
+
+- 选择容器
+- 点击「新增任务」
+- 填写任务名称和执行命令
+- 设置超时时间和日志选项
+
+### 4. 配置 DAG 依赖
+
+通过可视化界面配置任务之间的依赖关系，确保任务按正确顺序执行。
+![DAG 依赖](docs/images/config-dag.png)
+
+### 5. 实时监控
+
+![实时状态](docs/images/realtime-status.png)
+
+- 查看任务实时执行状态
+- SSE 推送日志输出
+- 自动滚动和手动控制
+- 支持取消单个任务或整个调度批次
+
+### 6. 日志查询
+
+![日志中心](docs/images/log-center.png)
+
+- 按容器、任务筛选
+- 时间范围查询
+- 查看历史执行记录
+
+## 核心架构
+
+### DAG 执行原理
+
+使用 Kahn 算法实现拓扑排序：
+1. 计算所有任务的入度
+2. 选择入度为 0 的任务并行执行
+3. 任务完成后减少其依赖任务的入度
+4. 重复直到所有任务完成
+
+### 任务取消机制
+
+支持两种级别的取消操作：
+- **取消单个任务** - 终止指定任务的执行进程，后续依赖任务不再执行
+- **取消整个批次** - 终止该 RunID 下所有正在执行的任务，并阻止后续任务启动
+
+### 阻塞运行模式
+
+容器级别的并发控制：
+- **启用阻塞** - 同一容器在上次调度未完成时，跳过本次调度，防止任务堆积
+- **关闭阻塞** - 允许多个调度批次并发执行
+
+### SSE 实时推送
+
+```
+┌─────────────┐     SSE      ┌─────────────┐
+│   Executor  │ ──────────► │ StreamHub   │
+│  (执行任务)  │             │  (广播中心)  │
+└─────────────┘             └──────┬──────┘
+                                   │
+                            ┌──────▼──────┐
+                            │   客户端    │
+                            │ (浏览器)    │
+                            └─────────────┘
+```
+
+### JWT 认证
+
+Token 支持三种传递方式：
+1. Header: `Authorization: Bearer <token>`
+2. Cookie
+3. Query: `?token=<token>`
+
+## 配置文件
+
+```toml
+[server]
+host = "0.0.0.0"
+port = 9528
+
+[storage]
+type = "sqlite"  # sqlite, mysql, postgresql
+dsn = "clock.db"
+
+[auth]
+secret = "your-secret-key"
+expire = 24  # 小时
+
+[message]
+expire = 24  # 小时
+```
+
+## 数据库支持
+
+支持 SQLite、MySQL、PostgreSQL，通过配置文件切换。
+
+## License
+
+MIT

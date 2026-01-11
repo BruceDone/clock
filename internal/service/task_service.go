@@ -95,3 +95,18 @@ func (s *taskService) UpdateNodes(nodes []domain.Node) error {
 	}
 	return nil
 }
+
+// CancelTask 取消单个任务
+func (s *taskService) CancelTask(tid int) error {
+	return s.executor.CancelTask(tid)
+}
+
+// CancelRun 取消整个 run
+func (s *taskService) CancelRun(runID string) error {
+	return s.executor.CancelRun(runID)
+}
+
+// GetRunningTasks 获取运行中的任务列表
+func (s *taskService) GetRunningTasks() []RunningTaskInfo {
+	return s.executor.GetRunningTasks()
+}

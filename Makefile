@@ -1,7 +1,7 @@
 LDFLAGS := -s -w
 CMD_PATH := ./cmd/clock
 WEB_SRC := server/webapp
-WEB_DEST := cmd/clock/web/dist
+WEB_DEST := cmd/clock/web
 
 all: fmt web build linux mac win
 
@@ -9,8 +9,9 @@ web:
 	@echo "Building frontend..."
 	cd $(WEB_SRC) && npm install && npm run build
 	@echo "Copying frontend to $(WEB_DEST)..."
-	mkdir -p cmd/clock/web
-	cp -r $(WEB_SRC)/dist $(WEB_DEST)/..
+	rm -rf $(WEB_DEST)
+	mkdir -p $(WEB_DEST)
+	cp -r $(WEB_SRC)/dist $(WEB_DEST)
 	@echo "Frontend built"
 
 build: linux

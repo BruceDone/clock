@@ -16,6 +16,7 @@ export interface Container {
   expression: string
   status: number
   disable: boolean
+  blocking: boolean  // 阻塞模式（上次未完成则跳过）
   update_at: number
 }
 

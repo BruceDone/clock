@@ -13,6 +13,7 @@ type StreamEvent struct {
 	ID         int64  `json:"id"`
 	TS         int64  `json:"ts"`
 	Kind       string `json:"kind"` // task_start | task_end | stdout | stderr | meta
+	RunID      string `json:"runId,omitempty"`
 	Tid        int    `json:"tid,omitempty"`
 	Cid        int    `json:"cid,omitempty"`
 	TaskName   string `json:"taskName,omitempty"`

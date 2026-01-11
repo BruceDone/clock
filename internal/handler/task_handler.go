@@ -117,3 +117,51 @@ func (h *TaskHandler) PutNodes(c echo.Context) error {
 
 	return OK(c, nil)
 }
+
+// CancelTask 取消单个任务
+func (h *TaskHandler) CancelTask(c echo.Context) error {
+	var req struct {
+		Tid int `json:"tid"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return BadRequest(c, "invalid request body")
+	}
+
+	if req.Tid <= 0 {
+		return BadRequest(c, "tid is required")
+	}
+
+	if err := h.taskService.CancelTask(req.Tid); err != nil {
+		logger.Errorf("[CancelTask] failed: %v", err)
+		return HandleError(c, err)
+	}
+
+	return OK(c, nil)
+}
+
+// CancelRun 取消整个 run
+func (h *TaskHandler) CancelRun(c echo.Context) error {
+	var req struct {
+		RunID string `json:"runId"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return BadRequest(c, "invalid request body")
+	}
+
+	if req.RunID == "" {
+		return BadRequest(c, "runId is required")
+	}
+
+	if err := h.taskService.CancelRun(req.RunID); err != nil {
+		logger.Errorf("[CancelRun] failed: %v", err)
+		return HandleError(c, err)
+	}
+
+	return OK(c, nil)
+}
+
+// GetRunningTasks 获取运行中的任务列表
+func (h *TaskHandler) GetRunningTasks(c echo.Context) error {
+	tasks := h.taskService.GetRunningTasks()
+	return OK(c, tasks)
+}

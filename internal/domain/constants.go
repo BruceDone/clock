@@ -2,10 +2,11 @@ package domain
 
 // 任务状态常量
 const (
-	StatusPending = iota + 1 // 等待中
-	StatusStart              // 运行中
-	StatusSuccess            // 成功
-	StatusFailure            // 失败
+	StatusPending   = iota + 1 // 等待中
+	StatusStart                // 运行中
+	StatusSuccess              // 成功
+	StatusFailure              // 失败
+	StatusCancelled            // 已取消
 )
 
 // 数据库后端类型
@@ -26,6 +27,8 @@ func StatusText(status int) string {
 		return "success"
 	case StatusFailure:
 		return "failure"
+	case StatusCancelled:
+		return "cancelled"
 	default:
 		return "unknown"
 	}

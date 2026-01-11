@@ -86,14 +86,18 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
               <el-button type="primary" link @click="handleEdit(row)">
                 <el-icon><Edit /></el-icon>
                 编辑
               </el-button>
-              <el-button type="success" link @click="handleRun(row)">
+              <el-button v-if="row.status === 2" type="warning" link @click="handleCancel(row)">
+                <el-icon><CircleClose /></el-icon>
+                取消
+              </el-button>
+              <el-button v-else type="success" link @click="handleRun(row)">
                 <el-icon><VideoPlay /></el-icon>
                 运行
               </el-button>
@@ -185,7 +189,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { getContainers } from '@/api/container'
-import { getTasks, putTask, deleteTask, runTask } from '@/api/task'
+import { getTasks, putTask, deleteTask, runTask, cancelTask } from '@/api/task'
 import type { Container, Task } from '@/types/model'
 
 const loading = ref(false)
@@ -214,12 +218,12 @@ const rules: FormRules = {
 }
 
 function getStatusType(status: number) {
-  const map: Record<number, string> = { 1: 'info', 2: 'primary', 3: 'success', 4: 'danger' }
+  const map: Record<number, string> = { 1: 'info', 2: 'primary', 3: 'success', 4: 'danger', 5: 'warning' }
   return map[status] || 'info'
 }
 
 function getStatusText(status: number) {
-  const map: Record<number, string> = { 1: '等待', 2: '运行中', 3: '成功', 4: '失败' }
+  const map: Record<number, string> = { 1: '等待', 2: '运行中', 3: '成功', 4: '失败', 5: '已取消' }
   return map[status] || '未知'
 }
 
@@ -272,8 +276,22 @@ async function handleRun(row: Task) {
   try {
     await runTask(row.tid)
     ElMessage.success('触发运行成功')
+    fetchList()
   } catch (error) {
     console.error(error)
+  }
+}
+
+async function handleCancel(row: Task) {
+  try {
+    await ElMessageBox.confirm('确定要取消该任务吗？', '确认取消', { type: 'warning' })
+    await cancelTask(row.tid)
+    ElMessage.success('任务取消请求已发送')
+    fetchList()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+    }
   }
 }
 
@@ -418,6 +436,7 @@ onMounted(() => {
         &.status-2 { background: var(--info-color); animation: status-pulse 1s infinite; }
         &.status-3 { background: var(--success-color); }
         &.status-4 { background: var(--danger-color); }
+        &.status-5 { background: var(--warning-color); }
       }
     }
 

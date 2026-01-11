@@ -21,6 +21,9 @@ type TaskService interface {
 	Delete(tid int) error
 	Run(tid int) error
 	UpdateNodes(nodes []domain.Node) error
+	CancelTask(tid int) error
+	CancelRun(runID string) error
+	GetRunningTasks() []RunningTaskInfo
 }
 
 // ContainerService 容器服务接口

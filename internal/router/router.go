@@ -76,6 +76,14 @@ func (r *Router) registerAPIRoutes() {
 		task.GET("/run", r.handlers.Task.RunTask)
 		task.DELETE("/:tid", r.handlers.Task.DeleteTask)
 		task.GET("/status", r.handlers.Message.GetTaskStatus)
+		task.POST("/cancel", r.handlers.Task.CancelTask)
+		task.GET("/running", r.handlers.Task.GetRunningTasks)
+	}
+
+	// run 路由（用于取消整个 run）
+	run := v1.Group("/run")
+	{
+		run.POST("/cancel", r.handlers.Task.CancelRun)
 	}
 
 	// 容器路由
@@ -143,8 +151,6 @@ func (r *Router) registerStaticRoutes() {
 	}
 	app := string(appBytes)
 
-	fileServer := http.FileServer(http.FS(content))
-
 	r.engine.GET("/*", func(c echo.Context) error {
 		path := c.Request().URL.Path
 
@@ -159,15 +165,53 @@ func (r *Router) registerStaticRoutes() {
 			filePath = "index.html"
 		}
 
-		// 检查文件是否存在
-		if _, err := fs.Stat(content, filePath); err == nil {
-			http.StripPrefix("/", fileServer).ServeHTTP(c.Response(), c.Request())
-			return nil
+		// 直接尝试读取文件内容
+		data, err := fs.ReadFile(content, filePath)
+		if err == nil {
+			// 文件存在，根据扩展名设置正确的 Content-Type
+			contentType := getMimeType(filePath)
+			return c.Blob(http.StatusOK, contentType, data)
 		}
 
-		// SPA fallback
+		// 文件不存在，返回 SPA fallback
 		return c.HTML(http.StatusOK, app)
 	})
+}
+
+// getMimeType 根据文件扩展名返回 MIME 类型
+func getMimeType(path string) string {
+	switch {
+	case strings.HasSuffix(path, ".js"):
+		return "application/javascript"
+	case strings.HasSuffix(path, ".mjs"):
+		return "application/javascript"
+	case strings.HasSuffix(path, ".css"):
+		return "text/css"
+	case strings.HasSuffix(path, ".html"):
+		return "text/html"
+	case strings.HasSuffix(path, ".json"):
+		return "application/json"
+	case strings.HasSuffix(path, ".svg"):
+		return "image/svg+xml"
+	case strings.HasSuffix(path, ".png"):
+		return "image/png"
+	case strings.HasSuffix(path, ".jpg"), strings.HasSuffix(path, ".jpeg"):
+		return "image/jpeg"
+	case strings.HasSuffix(path, ".gif"):
+		return "image/gif"
+	case strings.HasSuffix(path, ".ico"):
+		return "image/x-icon"
+	case strings.HasSuffix(path, ".woff"):
+		return "font/woff"
+	case strings.HasSuffix(path, ".woff2"):
+		return "font/woff2"
+	case strings.HasSuffix(path, ".ttf"):
+		return "font/ttf"
+	case strings.HasSuffix(path, ".eot"):
+		return "application/vnd.ms-fontobject"
+	default:
+		return "application/octet-stream"
+	}
 }
 
 // Start 启动服务器

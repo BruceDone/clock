@@ -107,15 +107,23 @@ function createParticles() {
   if (!particlesRef.value) return
 
   const container = particlesRef.value
-  const particleCount = 30
+  const particleCount = 80 // 增加粒子数量
 
   for (let i = 0; i < particleCount; i++) {
     const particle = document.createElement('div')
-    particle.className = 'particle'
+    // 随机分配不同类型的粒子
+    const particleType = Math.random()
+    if (particleType < 0.3) {
+      particle.className = 'particle particle-large'
+    } else if (particleType < 0.6) {
+      particle.className = 'particle particle-glow'
+    } else {
+      particle.className = 'particle'
+    }
     particle.style.left = Math.random() * 100 + '%'
     particle.style.top = Math.random() * 100 + '%'
-    particle.style.animationDelay = Math.random() * 5 + 's'
-    particle.style.animationDuration = (Math.random() * 3 + 3) + 's'
+    particle.style.animationDelay = Math.random() * 8 + 's'
+    particle.style.animationDuration = (Math.random() * 4 + 4) + 's'
     container.appendChild(particle)
   }
 }
@@ -211,25 +219,90 @@ onUnmounted(() => {
     border-radius: 50%;
     opacity: 0;
     animation: float-particle 6s ease-in-out infinite;
+    box-shadow: 0 0 6px var(--primary-color);
+  }
 
-    @keyframes float-particle {
-      0%, 100% {
-        opacity: 0;
-        transform: translateY(0) scale(0);
-      }
-      10% {
-        opacity: 0.6;
-        transform: translateY(-10px) scale(1);
-      }
-      90% {
-        opacity: 0.6;
-        transform: translateY(-100px) scale(1);
-      }
-      100% {
-        opacity: 0;
-        transform: translateY(-120px) scale(0);
-      }
-    }
+  :deep(.particle-large) {
+    width: 8px;
+    height: 8px;
+    box-shadow: 0 0 12px var(--primary-color), 0 0 24px var(--primary-color);
+    animation: float-particle-large 8s ease-in-out infinite;
+  }
+
+  :deep(.particle-glow) {
+    width: 6px;
+    height: 6px;
+    background: linear-gradient(135deg, var(--primary-color), var(--info-color));
+    box-shadow: 0 0 15px var(--primary-color), 0 0 30px rgba(var(--primary-color), 0.5);
+    animation: float-particle-glow 7s ease-in-out infinite;
+  }
+}
+
+@keyframes float-particle {
+  0%, 100% {
+    opacity: 0;
+    transform: translateY(0) scale(0);
+  }
+  10% {
+    opacity: 0.8;
+    transform: translateY(-10px) scale(1);
+  }
+  90% {
+    opacity: 0.8;
+    transform: translateY(-150px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-180px) scale(0);
+  }
+}
+
+@keyframes float-particle-large {
+  0%, 100% {
+    opacity: 0;
+    transform: translateY(0) scale(0) rotate(0deg);
+  }
+  10% {
+    opacity: 0.9;
+    transform: translateY(-20px) scale(1) rotate(45deg);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-100px) scale(1.2) rotate(180deg);
+  }
+  90% {
+    opacity: 0.9;
+    transform: translateY(-200px) scale(1) rotate(315deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-250px) scale(0) rotate(360deg);
+  }
+}
+
+@keyframes float-particle-glow {
+  0%, 100% {
+    opacity: 0;
+    transform: translateY(0) scale(0);
+    filter: hue-rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-15px) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-80px) scale(1.3);
+    filter: hue-rotate(30deg);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(-160px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-200px) scale(0);
+    filter: hue-rotate(60deg);
   }
 }
 
@@ -332,9 +405,31 @@ onUnmounted(() => {
   }
 }
 
+.login-form {
+  width: 100%;
+  
+  :deep(.el-form) {
+    width: 100%;
+  }
+  
+  :deep(.el-form-item) {
+    width: 100%;
+    margin-bottom: 24px;
+  }
+  
+  :deep(.el-form-item__content) {
+    width: 100%;
+  }
+}
+
 .input-wrapper {
   position: relative;
+  width: 100%;
   transition: all 0.3s ease;
+  
+  :deep(.el-input) {
+    width: 100%;
+  }
 
   &::before {
     content: '';
