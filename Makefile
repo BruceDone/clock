@@ -20,15 +20,15 @@ fmt:
 	go fmt ./...
 
 linux:
-	env GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/clock-linux $(CMD_PATH)
+	env GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "$(LDFLAGS)" -o bin/clock-linux $(CMD_PATH)
 	cp configs/config.toml bin/config.toml
 
 mac:
-	env GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/clock-darwin $(CMD_PATH)
+	env GOOS=darwin GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "$(LDFLAGS)" -o bin/clock-darwin $(CMD_PATH)
 	cp configs/config.toml bin/config.toml
 
 win:
-	env GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/clock-windows.exe $(CMD_PATH)
+	env GOOS=windows GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "$(LDFLAGS)" -o bin/clock-windows.exe $(CMD_PATH)
 	cp configs/config.toml bin/config.toml
 
 test:
