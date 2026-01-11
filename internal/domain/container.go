@@ -16,13 +16,3 @@ type Container struct {
 func (Container) TableName() string {
 	return "containers"
 }
-
-// IsDisabled 检查是否禁用
-func (c *Container) IsDisabled() bool {
-	return c.Disable
-}
-
-// SetStatus 设置状态
-func (c *Container) SetStatus(status int) {
-	c.Status = status
-}

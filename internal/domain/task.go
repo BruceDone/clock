@@ -21,16 +21,6 @@ func (Task) TableName() string {
 	return "tasks"
 }
 
-// IsDisabled 检查是否禁用
-func (t *Task) IsDisabled() bool {
-	return t.Disable
-}
-
-// SetStatus 设置状态
-func (t *Task) SetStatus(status int) {
-	t.Status = status
-}
-
 // Node 关系图节点（视图对象）
 type Node struct {
 	ID     int    `json:"id"`

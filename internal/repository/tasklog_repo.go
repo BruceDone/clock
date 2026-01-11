@@ -90,3 +90,19 @@ func (r *taskLogRepository) DeleteByTimeRange(query *LogQuery) error {
 	}
 	return nil
 }
+
+// DeleteByID 根据日志ID删除单条日志
+func (r *taskLogRepository) DeleteByID(lid string) error {
+	if err := r.db.Delete(&domain.TaskLog{}, "lid = ?", lid).Error; err != nil {
+		return apperrors.Database(err)
+	}
+	return nil
+}
+
+// DeleteAll 删除所有日志
+func (r *taskLogRepository) DeleteAll() error {
+	if err := r.db.Where("1 = 1").Delete(&domain.TaskLog{}).Error; err != nil {
+		return apperrors.Database(err)
+	}
+	return nil
+}

@@ -102,13 +102,3 @@ func (h *StreamHub) removeSub(ch chan StreamEvent, slow bool) {
 		h.slowDisconnects.Add(1)
 	}
 }
-
-func (h *StreamHub) SubscriberCount() int {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	return len(h.subs)
-}
-
-func (h *StreamHub) SlowDisconnects() int64 {
-	return h.slowDisconnects.Load()
-}

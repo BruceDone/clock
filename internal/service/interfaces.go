@@ -47,6 +47,8 @@ type RelationService interface {
 type TaskLogService interface {
 	List(query *repository.LogQuery) (*ListResult[*domain.TaskLog], error)
 	Delete(query *repository.LogQuery) error
+	DeleteByID(lid string) error
+	DeleteAll() error
 }
 
 // SystemService 系统监控服务接口

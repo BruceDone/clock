@@ -101,6 +101,8 @@ func (r *Router) registerAPIRoutes() {
 	{
 		logGroup.GET("", r.handlers.Log.GetLogs)
 		logGroup.DELETE("", r.handlers.Log.DeleteLogs)
+		logGroup.DELETE("/all", r.handlers.Log.DeleteAllLogs)
+		logGroup.DELETE("/:lid", r.handlers.Log.DeleteLogByID)
 	}
 
 	// 登录路由

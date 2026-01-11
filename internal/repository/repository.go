@@ -67,5 +67,7 @@ type RelationRepository interface {
 type TaskLogRepository interface {
 	List(query *LogQuery) ([]*domain.TaskLog, error)
 	Save(log *domain.TaskLog) error
+	DeleteByID(lid string) error
 	DeleteByTimeRange(query *LogQuery) error
+	DeleteAll() error
 }

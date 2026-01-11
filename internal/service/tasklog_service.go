@@ -34,3 +34,13 @@ func (s *taskLogService) List(query *repository.LogQuery) (*ListResult[*domain.T
 func (s *taskLogService) Delete(query *repository.LogQuery) error {
 	return s.taskLogRepo.DeleteByTimeRange(query)
 }
+
+// DeleteByID 根据日志ID删除单条日志
+func (s *taskLogService) DeleteByID(lid string) error {
+	return s.taskLogRepo.DeleteByID(lid)
+}
+
+// DeleteAll 删除所有日志
+func (s *taskLogService) DeleteAll() error {
+	return s.taskLogRepo.DeleteAll()
+}

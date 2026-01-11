@@ -146,6 +146,7 @@ func (e *Executor) RunTaskWithRunID(task *domain.Task, runID string) error {
 	if task.Command == "" {
 		task.Status = domain.StatusFailure
 		errMsg = "command cannot be empty"
+		cancel()
 		return errors.New(errMsg)
 	}
 
@@ -403,22 +404,6 @@ func (e *Executor) unregisterRunningContainer(cid int) {
 	delete(e.runningContainers, cid)
 }
 
-// GetRunningContainers 获取运行中的容器列表
-func (e *Executor) GetRunningContainers() []int {
-	e.runningContainersMu.RLock()
-	defer e.runningContainersMu.RUnlock()
-	result := make([]int, 0, len(e.runningContainers))
-	for cid := range e.runningContainers {
-		result = append(result, cid)
-	}
-	return result
-}
-
-// RunTaskByID 根据ID执行任务（检查依赖）
-func (e *Executor) RunTaskByID(tid int) error {
-	return e.RunTaskByIDWithRunID(tid, "")
-}
-
 // RunTaskByIDWithRunID 根据ID执行任务，带 runID
 func (e *Executor) RunTaskByIDWithRunID(tid int, runID string) error {
 	// 检查该 runID 是否已被取消
@@ -505,11 +490,6 @@ func (e *Executor) RunContainer(container *domain.Container, tasks []*domain.Tas
 
 	e.runStageTasksWithRunID(tasks, relations, runID)
 	return nil
-}
-
-// runStageTasks 按阶段执行任务（拓扑排序）
-func (e *Executor) runStageTasks(tasks []*domain.Task, relations []*domain.Relation) {
-	e.runStageTasksWithRunID(tasks, relations, "")
 }
 
 // runStageTasksWithRunID 按阶段执行任务，带 runID

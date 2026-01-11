@@ -20,7 +20,7 @@
           </div>
         </div>
         <div class="filter-right">
-          <el-button type="primary" @click="showDialog = true">
+          <el-button type="primary" @click="handleAdd">
             <el-icon><Plus /></el-icon>
             新增容器
           </el-button>
@@ -86,6 +86,10 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
+              <el-button type="warning" link @click="handleEdit(row)">
+                <el-icon><Edit /></el-icon>
+                编辑
+              </el-button>
               <el-button type="primary" link @click="handleConfig(row)">
                 <el-icon><Setting /></el-icon>
                 配置
@@ -118,7 +122,7 @@
     </el-card>
 
     <!-- 新增/编辑对话框 -->
-    <el-dialog v-model="showDialog" :title="isEdit ? '编辑容器' : '新增容器'" width="500px" class="container-dialog">
+    <el-dialog v-model="showDialog" :title="isEdit ? '编辑容器' : '新增容器'" width="600px" class="container-dialog" @closed="resetForm">
       <template #header>
         <div class="dialog-header">
           <el-icon><component :is="isEdit ? 'Edit' : 'Plus'" /></el-icon>
@@ -134,15 +138,7 @@
           </el-input>
         </el-form-item>
         <el-form-item label="Cron 表达式" prop="expression">
-          <el-input v-model="form.expression" placeholder="如: 0 0 * * * 或 @every 1h">
-            <template #prefix>
-              <el-icon><Clock /></el-icon>
-            </template>
-          </el-input>
-          <div class="cron-hint">
-            <el-icon><InfoFilled /></el-icon>
-            <span>使用标准 cron 格式或 @every 语法</span>
-          </div>
+          <CronPicker v-model="form.expression" />
         </el-form-item>
         <el-form-item label="阻塞运行">
           <el-switch v-model="form.blocking" />
@@ -172,6 +168,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { getContainers, putContainer, deleteContainer, runContainer } from '@/api/container'
 import type { Container } from '@/types/model'
+import CronPicker from '@/components/CronPicker/index.vue'
 
 const router = useRouter()
 
@@ -250,6 +247,28 @@ async function handleRun(row: Container) {
 
 function handleConfig(row: Container) {
   router.push(`/container/config/${row.cid}`)
+}
+
+function handleEdit(row: Container) {
+  isEdit.value = true
+  editingId.value = row.cid
+  form.name = row.name
+  form.expression = row.expression
+  form.blocking = row.blocking ?? true
+  showDialog.value = true
+}
+
+function resetForm() {
+  isEdit.value = false
+  editingId.value = undefined
+  form.name = ''
+  form.expression = ''
+  form.blocking = true
+}
+
+function handleAdd() {
+  resetForm()
+  showDialog.value = true
 }
 
 async function handleToggle(row: Container) {
@@ -465,7 +484,11 @@ onMounted(() => {
       background: var(--input-bg) !important;
     }
 
-    .cron-hint, .blocking-hint {
+    :deep(.el-form-item__content) {
+      display: block;
+    }
+
+    .blocking-hint {
       display: flex;
       align-items: center;
       gap: 6px;

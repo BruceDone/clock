@@ -50,10 +50,6 @@ func HandleError(c echo.Context, err error) error {
 		switch appErr.Code {
 		case apperrors.ErrNotFound:
 			return c.JSON(http.StatusNotFound, ErrorWithCode(int(appErr.Code), appErr.Message))
-		case apperrors.ErrValidation:
-			return c.JSON(http.StatusBadRequest, ErrorWithCode(int(appErr.Code), appErr.Message))
-		case apperrors.ErrUnauthorized:
-			return c.JSON(http.StatusUnauthorized, ErrorWithCode(int(appErr.Code), appErr.Message))
 		default:
 			return c.JSON(http.StatusInternalServerError, ErrorWithCode(int(appErr.Code), appErr.Error()))
 		}
@@ -66,19 +62,9 @@ func OK(c echo.Context, data interface{}) error {
 	return c.JSON(http.StatusOK, Success(data))
 }
 
-// Created 返回创建成功响应
-func Created(c echo.Context, data interface{}) error {
-	return c.JSON(http.StatusCreated, Success(data))
-}
-
 // BadRequest 返回400错误
 func BadRequest(c echo.Context, msg string) error {
 	return c.JSON(http.StatusBadRequest, Error(msg))
-}
-
-// NotFound 返回404错误
-func NotFound(c echo.Context, msg string) error {
-	return c.JSON(http.StatusNotFound, Error(msg))
 }
 
 // Unauthorized 返回401错误
