@@ -1,4 +1,0 @@
-{"level":"INFO","ts":"2026-01-11 12:48:19.962","caller":"logger/logger.go:119","msg":"[scheduler] starting cron scheduler"}
-{"level":"INFO","ts":"2026-01-11 12:48:19.972","caller":"logger/logger.go:154","msg":"starting server on 0.0.0.0:9528"}
-{"level":"INFO","ts":"2026-01-11 12:49:02.750","caller":"logger/logger.go:154","msg":"[scheduler] added job for container 测试容器 with entry id 1"}
-{"level":"INFO","ts":"2026-01-11 13:22:46.206","caller":"logger/logger.go:154","msg":"[scheduler] added job for container 测试容器 with entry id 2"}
