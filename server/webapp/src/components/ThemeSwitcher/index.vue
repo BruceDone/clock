@@ -6,7 +6,7 @@
         :style="{ transform: `translateX(${currentIndex * 100}%)` }"
       ></div>
       <div
-        v-for="(theme, index) in themes"
+        v-for="theme in themes"
         :key="theme.name"
         class="theme-tab"
         :class="{ active: theme.name === currentTheme }"

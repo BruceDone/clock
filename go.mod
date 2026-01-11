@@ -8,7 +8,6 @@ require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/gorilla/websocket v1.5.0
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
 	github.com/robfig/cron/v3 v3.0.1

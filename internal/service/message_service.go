@@ -1,49 +1,44 @@
 package service
 
 import (
+	"context"
+
 	"clock/internal/domain"
 	"clock/internal/repository"
 )
 
 // messageService 消息服务实现
 type messageService struct {
-	message       *domain.Message
+	hub           *StreamHub
 	taskRepo      repository.TaskRepository
 	containerRepo repository.ContainerRepository
 }
 
 // NewMessageService 创建消息服务
 func NewMessageService(
-	message *domain.Message,
+	hub *StreamHub,
 	taskRepo repository.TaskRepository,
 	containerRepo repository.ContainerRepository,
 ) MessageService {
 	return &messageService{
-		message:       message,
+		hub:           hub,
 		taskRepo:      taskRepo,
 		containerRepo: containerRepo,
 	}
 }
 
-// Send 发送消息
-func (s *messageService) Send(msg string) {
-	s.message.Send(msg)
+func (s *messageService) Publish(event StreamEvent) {
+	s.hub.Publish(event)
 }
 
-// Receive 获取消息通道
-func (s *messageService) Receive() <-chan string {
-	return s.message.Receive()
+func (s *messageService) Subscribe(ctx context.Context) <-chan StreamEvent {
+	return s.hub.Subscribe(ctx)
 }
 
 // GetCounters 获取任务统计
 func (s *messageService) GetCounters() []domain.TaskCounter {
 	// 获取所有任务
 	tasks, _ := s.taskRepo.List(&repository.TaskQuery{
-		Page: repository.Page{Count: 10000},
-	})
-
-	// 获取所有容器
-	containers, _ := s.containerRepo.List(&repository.ContainerQuery{
 		Page: repository.Page{Count: 10000},
 	})
 
@@ -64,11 +59,9 @@ func (s *messageService) GetCounters() []domain.TaskCounter {
 	}
 
 	return []domain.TaskCounter{
-		{Title: "Containers", Icon: "container", Count: len(containers), Color: "#409EFF"},
-		{Title: "Tasks", Icon: "task", Count: len(tasks), Color: "#67C23A"},
-		{Title: "Running", Icon: "running", Count: runningCount, Color: "#E6A23C"},
-		{Title: "Success", Icon: "success", Count: successCount, Color: "#67C23A"},
-		{Title: "Failure", Icon: "failure", Count: failureCount, Color: "#F56C6C"},
-		{Title: "Pending", Icon: "pending", Count: pendingCount, Color: "#909399"},
+		{Title: "等待运行", Icon: "pending", Count: pendingCount, Color: "#909399"},
+		{Title: "正在运行", Icon: "running", Count: runningCount, Color: "#00ccff"},
+		{Title: "运行成功", Icon: "success", Count: successCount, Color: "#00ff88"},
+		{Title: "运行失败", Icon: "failure", Count: failureCount, Color: "#ff4466"},
 	}
 }

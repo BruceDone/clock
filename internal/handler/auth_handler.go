@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -54,6 +55,18 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	if err != nil {
 		return InternalError(c, "failed to generate token")
 	}
+
+	// Also set a cookie so SSE (EventSource) can authenticate.
+	// In dev (http), Secure=false; in https, Secure=true.
+	c.SetCookie(&http.Cookie{
+		Name:     "token",
+		Value:    t,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   c.Scheme() == "https",
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Now().Add(24 * time.Hour),
+	})
 
 	return OK(c, LoginResponse{Token: t})
 }

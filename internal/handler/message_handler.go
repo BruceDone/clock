@@ -1,10 +1,11 @@
 package handler
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 
 	"clock/internal/service"
@@ -22,32 +23,51 @@ func NewMessageHandler(messageService service.MessageService) *MessageHandler {
 	}
 }
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
-// GetTaskStatus WebSocket推送任务状态
+// GetTaskStatus SSE 推送任务状态（结构化事件流）
 func (h *MessageHandler) GetTaskStatus(c echo.Context) error {
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		return err
-	}
-	defer ws.Close()
+	res := c.Response()
+	res.Header().Set(echo.HeaderContentType, "text/event-stream")
+	res.Header().Set(echo.HeaderCacheControl, "no-cache")
+	res.Header().Set("Connection", "keep-alive")
+	res.Header().Set("X-Accel-Buffering", "no")
+	res.WriteHeader(http.StatusOK)
 
-	msgChan := h.messageService.Receive()
+	flusher, ok := res.Writer.(http.Flusher)
+	if !ok {
+		return echo.NewHTTPError(http.StatusInternalServerError, "streaming unsupported")
+	}
+
+	ctx := c.Request().Context()
+	events := h.messageService.Subscribe(ctx)
+
+	// initial comment to ensure the stream is established
+	_, _ = fmt.Fprint(res.Writer, ": ok\n\n")
+	flusher.Flush()
+
+	keepalive := time.NewTicker(15 * time.Second)
+	defer keepalive.Stop()
 
 	for {
 		select {
-		case msg := <-msgChan:
-			if err := ws.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+		case <-ctx.Done():
+			return nil
+		case <-keepalive.C:
+			_, _ = fmt.Fprint(res.Writer, ": ping\n\n")
+			flusher.Flush()
+		case ev, ok := <-events:
+			if !ok {
 				return nil
 			}
-		default:
-			time.Sleep(50 * time.Millisecond)
+
+			data, err := json.Marshal(ev)
+			if err != nil {
+				continue
+			}
+
+			_, _ = fmt.Fprintf(res.Writer, "id: %d\n", ev.ID)
+			_, _ = fmt.Fprint(res.Writer, "event: log\n")
+			_, _ = fmt.Fprintf(res.Writer, "data: %s\n\n", data)
+			flusher.Flush()
 		}
 	}
 }

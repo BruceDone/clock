@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"clock/internal/domain"
 	"clock/internal/repository"
 )
@@ -60,8 +62,11 @@ type SchedulerService interface {
 }
 
 // MessageService 消息服务接口
+//
+// It now represents a broadcast stream (SSE) of structured task events.
+// All subscribers should receive the same stream.
 type MessageService interface {
-	Send(msg string)
-	Receive() <-chan string
+	Publish(event StreamEvent)
+	Subscribe(ctx context.Context) <-chan StreamEvent
 	GetCounters() []domain.TaskCounter
 }

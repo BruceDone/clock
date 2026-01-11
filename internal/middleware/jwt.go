@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"strings"
-
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
@@ -13,28 +11,13 @@ import (
 func NewJWTConfig(cfg *config.AuthConfig) middleware.JWTConfig {
 	jwtConfig := middleware.DefaultJWTConfig
 	jwtConfig.SigningKey = []byte(cfg.JWTSecret)
-	jwtConfig.TokenLookup = "header:token:"
+	jwtConfig.TokenLookup = "header:token:,cookie:token,query:token"
 	jwtConfig.AuthScheme = ""
 
-	// 跳过不需要认证的路径
-	skipPaths := []string{
-		"/v1/login",
-		"/v1/task/status", // WebSocket
-		"webapp",
-		"js",
-		"css",
-	}
-
+	// 跳过不需要认证的路径（注意：JWT 中间件只作用于 /v1 路由组）
 	jwtConfig.Skipper = func(c echo.Context) bool {
-		uri := c.Request().RequestURI
-
-		for _, path := range skipPaths {
-			if strings.Contains(uri, path) {
-				return true
-			}
-		}
-
-		return false
+		path := c.Request().URL.Path
+		return path == "/v1/login"
 	}
 
 	return jwtConfig

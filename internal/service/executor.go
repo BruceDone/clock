@@ -1,11 +1,13 @@
 package service
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	uuid "github.com/nu7hatch/gouuid"
@@ -21,7 +23,7 @@ type Executor struct {
 	taskRepo     repository.TaskRepository
 	relationRepo repository.RelationRepository
 	taskLogRepo  repository.TaskLogRepository
-	message      *domain.Message
+	hub          *StreamHub
 }
 
 // NewExecutor 创建执行器
@@ -29,13 +31,13 @@ func NewExecutor(
 	taskRepo repository.TaskRepository,
 	relationRepo repository.RelationRepository,
 	taskLogRepo repository.TaskLogRepository,
-	message *domain.Message,
+	hub *StreamHub,
 ) *Executor {
 	return &Executor{
 		taskRepo:     taskRepo,
 		relationRepo: relationRepo,
 		taskLogRepo:  taskLogRepo,
-		message:      message,
+		hub:          hub,
 	}
 }
 
@@ -44,6 +46,9 @@ func (e *Executor) RunTask(task *domain.Task) error {
 	var stdOutBuf bytes.Buffer
 	var stdErrBuf bytes.Buffer
 
+	startAt := time.Now()
+	errMsg := ""
+
 	// 设置开始状态
 	task.Status = domain.StatusStart
 	defer func() {
@@ -51,57 +56,137 @@ func (e *Executor) RunTask(task *domain.Task) error {
 		logger.Debugf("[%d] finished task [%s]", task.Tid, task.Name)
 		_ = e.taskRepo.Save(task)
 		e.saveLog(task, stdOutBuf, stdErrBuf)
+
+		e.hub.Publish(StreamEvent{
+			Kind:       "task_end",
+			Tid:        task.Tid,
+			Cid:        task.Cid,
+			TaskName:   task.Name,
+			Status:     domain.StatusText(task.Status),
+			DurationMs: time.Since(startAt).Milliseconds(),
+			Msg:        errMsg,
+		})
 	}()
 
 	if task.Command == "" {
 		task.Status = domain.StatusFailure
-		return errors.New("command cannot be empty")
+		errMsg = "command cannot be empty"
+		return errors.New(errMsg)
 	}
 
 	logger.Debugf("[%d] running task [%s]", task.Tid, task.Name)
 	_ = e.taskRepo.Save(task)
 
+	e.hub.Publish(StreamEvent{
+		Kind:     "task_start",
+		Tid:      task.Tid,
+		Cid:      task.Cid,
+		TaskName: task.Name,
+		Msg:      "running",
+	})
+
 	// 解析命令
 	args := strings.Split(task.Command, " ")
 	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = &stdOutBuf
-	cmd.Stderr = &stdErrBuf
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		task.Status = domain.StatusFailure
+		errMsg = err.Error()
+		return err
+	}
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		task.Status = domain.StatusFailure
+		errMsg = err.Error()
+		return err
+	}
 
 	if task.Directory != "" {
 		cmd.Dir = task.Directory
 	}
 
-	// 带超时执行
-	if task.Timeout > 0 {
-		timeout := time.After(time.Duration(task.Timeout) * time.Second)
-		done := make(chan error, 1)
+	if err := cmd.Start(); err != nil {
+		task.Status = domain.StatusFailure
+		errMsg = err.Error()
+		return err
+	}
 
-		go func() {
-			done <- cmd.Run()
-		}()
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-		select {
-		case <-timeout:
-			_ = cmd.Process.Kill()
-			task.Status = domain.StatusFailure
-			logger.Errorf("task %s reached timeout limit", task.Name)
-			return fmt.Errorf("task %s timeout", task.Name)
-		case err := <-done:
-			if err != nil {
-				task.Status = domain.StatusFailure
-				stdErrBuf.WriteString(err.Error())
-				return err
-			}
-			task.Status = domain.StatusSuccess
-			return nil
+	readStream := func(kind string, r *bufio.Scanner, buf *bytes.Buffer) {
+		defer wg.Done()
+		for r.Scan() {
+			line := r.Text()
+			buf.WriteString(line)
+			buf.WriteByte('\n')
+			e.hub.Publish(StreamEvent{
+				Kind:     kind,
+				Tid:      task.Tid,
+				Cid:      task.Cid,
+				TaskName: task.Name,
+				Msg:      line,
+			})
+		}
+		if scanErr := r.Err(); scanErr != nil {
+			buf.WriteString(scanErr.Error())
+			buf.WriteByte('\n')
+			e.hub.Publish(StreamEvent{
+				Kind:     "meta",
+				Tid:      task.Tid,
+				Cid:      task.Cid,
+				TaskName: task.Name,
+				Msg:      fmt.Sprintf("%s reader error: %v", kind, scanErr),
+			})
 		}
 	}
 
-	// 无超时执行
-	if err := cmd.Run(); err != nil {
+	stdoutScanner := bufio.NewScanner(stdoutPipe)
+	stdoutScanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	stderrScanner := bufio.NewScanner(stderrPipe)
+	stderrScanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+	go readStream("stdout", stdoutScanner, &stdOutBuf)
+	go readStream("stderr", stderrScanner, &stdErrBuf)
+
+	// Wait for process completion (with optional timeout)
+	var waitErr error
+	var timedOut bool
+
+	if task.Timeout > 0 {
+		done := make(chan error, 1)
+		go func() {
+			done <- cmd.Wait()
+		}()
+
+		select {
+		case waitErr = <-done:
+		case <-time.After(time.Duration(task.Timeout) * time.Second):
+			timedOut = true
+			_ = cmd.Process.Kill()
+			waitErr = <-done
+		}
+	} else {
+		waitErr = cmd.Wait()
+	}
+
+	// Ensure readers have drained pipes before we persist logs.
+	wg.Wait()
+
+	if timedOut {
 		task.Status = domain.StatusFailure
-		stdErrBuf.WriteString(err.Error())
-		return err
+		errMsg = fmt.Sprintf("task %s timeout", task.Name)
+		logger.Errorf("task %s reached timeout limit", task.Name)
+		return errors.New(errMsg)
+	}
+
+	if waitErr != nil {
+		task.Status = domain.StatusFailure
+		stdErrBuf.WriteString(waitErr.Error())
+		stdErrBuf.WriteByte('\n')
+		errMsg = waitErr.Error()
+		return waitErr
 	}
 
 	task.Status = domain.StatusSuccess
@@ -231,9 +316,6 @@ func (e *Executor) runStageTasks(tasks []*domain.Task, relations []*domain.Relat
 
 // saveLog 保存执行日志
 func (e *Executor) saveLog(task *domain.Task, stdOut, stdErr bytes.Buffer) {
-	sErr := fmt.Sprintf("%s stderr: %s", task.Name, stdErr.String())
-	sOut := fmt.Sprintf("%s stdout: %s", task.Name, stdOut.String())
-
 	// 保存日志到数据库
 	if task.LogEnable {
 		lid := genGUID(8)
@@ -247,10 +329,6 @@ func (e *Executor) saveLog(task *domain.Task, stdOut, stdErr bytes.Buffer) {
 		}
 		_ = e.taskLogRepo.Save(log)
 	}
-
-	// 发送消息
-	e.message.Send(sErr)
-	e.message.Send(sOut)
 }
 
 // genGUID 生成UUID

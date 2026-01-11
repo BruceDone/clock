@@ -176,6 +176,35 @@ func Fatalf(template string, args ...interface{}) {
 	}
 }
 
+// Printf 实现 cron.Logger 接口
+func Printf(template string, args ...interface{}) {
+	if Sugar != nil {
+		Sugar.Infof(template, args...)
+	}
+}
+
+// CronLogger cron 日志适配器
+type CronLogger struct{}
+
+// Info 实现 cron.Logger 接口
+func (l *CronLogger) Info(msg string, keysAndValues ...interface{}) {
+	if Sugar != nil {
+		Sugar.Infow("[cron] "+msg, keysAndValues...)
+	}
+}
+
+// Error 实现 cron.Logger 接口
+func (l *CronLogger) Error(err error, msg string, keysAndValues ...interface{}) {
+	if Sugar != nil {
+		Sugar.Errorw("[cron] "+msg, append(keysAndValues, "error", err)...)
+	}
+}
+
+// NewCronLogger 创建 cron 日志适配器
+func NewCronLogger() *CronLogger {
+	return &CronLogger{}
+}
+
 // With 添加字段
 func With(fields ...zap.Field) *zap.Logger {
 	if Logger != nil {

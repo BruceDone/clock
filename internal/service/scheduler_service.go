@@ -1,9 +1,6 @@
 package service
 
 import (
-	"log"
-	"os"
-
 	"github.com/robfig/cron/v3"
 
 	"clock/internal/domain"
@@ -28,12 +25,10 @@ func NewSchedulerService(
 	relationRepo repository.RelationRepository,
 	executor *Executor,
 ) SchedulerService {
-	optLogs := cron.WithLogger(
-		cron.VerbosePrintfLogger(
-			log.New(os.Stdout, "[Cron]: ", log.LstdFlags)))
+	cronLogger := cron.WithLogger(logger.NewCronLogger())
 
 	return &schedulerService{
-		cron:          cron.New(optLogs),
+		cron:          cron.New(cronLogger),
 		containerRepo: containerRepo,
 		taskRepo:      taskRepo,
 		relationRepo:  relationRepo,

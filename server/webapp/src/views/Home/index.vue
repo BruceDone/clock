@@ -155,12 +155,10 @@ async function fetchStats() {
     const res = await getMessages()
     if (res.data && Array.isArray(res.data)) {
       const iconMap: Record<string, string> = {
-        'container': 'Box',
-        'task': 'List',
+        'pending': 'Clock',
         'running': 'Loading',
         'success': 'CircleCheckFilled',
-        'failure': 'CircleCloseFilled',
-        'pending': 'Clock'
+        'failure': 'CircleCloseFilled'
       }
 
       const newStats = res.data.map((item: any) => ({
@@ -171,6 +169,10 @@ async function fetchStats() {
       }))
 
       stats.value = newStats
+      // 确保 animatedCounts 和 targetCounts 数组长度与 newStats 一致
+      if (animatedCounts.value.length !== newStats.length) {
+        animatedCounts.value = new Array(newStats.length).fill(0)
+      }
       targetCounts.value = newStats.map(s => s.count)
       animateCounts()
     }

@@ -3,7 +3,6 @@ package router
 import (
 	"embed"
 	"io/fs"
-	"log"
 	"net/http"
 	"strings"
 
@@ -12,6 +11,7 @@ import (
 
 	"clock/internal/config"
 	"clock/internal/handler"
+	"clock/internal/logger"
 	"clock/internal/middleware"
 )
 
@@ -48,10 +48,7 @@ func NewRouter(cfg *config.Config, handlers *Handlers, webapp embed.FS) *Router 
 func (r *Router) Setup() *echo.Echo {
 	// 全局中间件
 	r.engine.Use(echoMiddleware.CORS())
-	r.engine.Use(echoMiddleware.LoggerWithConfig(echoMiddleware.LoggerConfig{
-		Format:           "[${status}] - ${method} - ${uri} - ${query} - ${form}\n",
-		CustomTimeFormat: "2006-01-02 15:04:05.00000",
-	}))
+	r.engine.Use(middleware.Logger())
 	r.engine.Use(echoMiddleware.Recover())
 
 	// 注册API路由
@@ -137,12 +134,12 @@ func (r *Router) registerAPIRoutes() {
 func (r *Router) registerStaticRoutes() {
 	content, err := fs.Sub(r.webapp, "web/dist")
 	if err != nil {
-		log.Fatalf("failed to load webapp: %v", err)
+		logger.Fatalf("failed to load webapp: %v", err)
 	}
 
 	appBytes, err := fs.ReadFile(content, "index.html")
 	if err != nil {
-		log.Fatalf("failed to load index.html: %v", err)
+		logger.Fatalf("failed to load index.html: %v", err)
 	}
 	app := string(appBytes)
 

@@ -4,7 +4,7 @@
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">实时状态</h1>
-        <p class="page-subtitle">WebSocket 实时任务执行监控</p>
+        <p class="page-subtitle">SSE 实时任务执行监控</p>
       </div>
       <div class="header-right">
         <div class="connection-status" :class="{ connected: isConnected }">
@@ -34,16 +34,16 @@
     </el-card>
 
     <!-- 日志容器 -->
-    <div class="log-container scanline" ref="logContainerRef">
+    <div class="log-container scanline">
       <div class="log-bg-grid"></div>
-      <div class="log-content">
+      <div class="log-content" ref="logContainerRef">
         <div v-if="logs.length === 0" class="log-empty">
           <el-icon size="48"><ChatDotRound /></el-icon>
           <p>等待任务日志...</p>
         </div>
-        <div v-for="(log, index) in logs" :key="index" class="log-item" :class="log.type">
+        <div v-for="log in logs" :key="log.id" class="log-item">
           <span class="timestamp">[{{ log.timestamp }}]</span>
-          <span class="message">{{ log.message }}</span>
+          <span class="message" :class="log.type">{{ log.message }}</span>
         </div>
       </div>
     </div>
@@ -53,11 +53,26 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 
+interface StreamEvent {
+  id: number
+  ts: number
+  kind: 'task_start' | 'task_end' | 'stdout' | 'stderr' | 'meta' | string
+  tid?: number
+  cid?: number
+  taskName?: string
+  status?: string
+  durationMs?: number
+  msg?: string
+}
+
 interface LogMessage {
+  id: number
   timestamp: string
   message: string
   type: 'info' | 'success' | 'error' | 'stdout' | 'stderr'
 }
+
+const MAX_LOGS = 1000
 
 const logContainerRef = ref<HTMLElement>()
 const logs = ref<LogMessage[]>([])
@@ -65,13 +80,94 @@ const autoScroll = ref(true)
 const connecting = ref(false)
 const isConnected = ref(false)
 
-let ws: WebSocket | null = null
-let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let es: EventSource | null = null
+let localLogID = -1
+let lastErrorAt = 0
 
-function getWsUrl() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const host = window.location.hostname === 'localhost' ? '127.0.0.1:9528' : window.location.host
-  return `${protocol}//${host}/v1/task/status`
+const pendingQueue: LogMessage[] = []
+let flushHandle: number | null = null
+
+function formatTs(ms: number) {
+  return new Date(ms).toLocaleTimeString('zh-CN', { hour12: false })
+}
+
+function isNearBottom(el: HTMLElement, thresholdPx = 80) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < thresholdPx
+}
+
+function scheduleFlush() {
+  if (flushHandle != null) return
+
+  flushHandle = window.requestAnimationFrame(async () => {
+    flushHandle = null
+    if (pendingQueue.length === 0) return
+
+    const el = logContainerRef.value
+    const shouldStick = !!el && autoScroll.value && isNearBottom(el)
+
+    logs.value.push(...pendingQueue.splice(0))
+
+    if (logs.value.length > MAX_LOGS) {
+      logs.value.splice(0, logs.value.length - MAX_LOGS)
+    }
+
+    if (shouldStick) {
+      await nextTick()
+      if (logContainerRef.value) {
+        logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight
+      }
+    }
+
+    if (pendingQueue.length > 0) {
+      scheduleFlush()
+    }
+  })
+}
+
+function enqueueLog(type: LogMessage['type'], message: string, id?: number, ts?: number) {
+  pendingQueue.push({
+    id: id ?? localLogID--,
+    timestamp: formatTs(ts ?? Date.now()),
+    message,
+    type
+  })
+  scheduleFlush()
+}
+
+function formatPrefix(ev: StreamEvent) {
+  const parts: string[] = []
+  if (ev.taskName) parts.push(ev.taskName)
+  if (ev.tid != null) parts.push(`TID:${ev.tid}`)
+  if (ev.cid != null) parts.push(`CID:${ev.cid}`)
+  return parts.length ? `[${parts.join(' ')}] ` : ''
+}
+
+function onStreamEvent(ev: StreamEvent) {
+  const prefix = formatPrefix(ev)
+
+  switch (ev.kind) {
+    case 'stdout':
+      enqueueLog('stdout', `${prefix}${ev.msg ?? ''}`, ev.id, ev.ts)
+      return
+    case 'stderr':
+      enqueueLog('stderr', `${prefix}${ev.msg ?? ''}`, ev.id, ev.ts)
+      return
+    case 'task_start':
+      enqueueLog('info', `${prefix}开始执行`, ev.id, ev.ts)
+      return
+    case 'task_end': {
+      const ok = ev.status === 'success'
+      const extra = ev.durationMs != null ? ` (${ev.durationMs}ms)` : ''
+      const msg = ev.msg ? `: ${ev.msg}` : ''
+      enqueueLog(ok ? 'success' : 'error', `${prefix}${ev.status ?? 'done'}${extra}${msg}`, ev.id, ev.ts)
+      return
+    }
+    case 'meta':
+      enqueueLog('info', `${prefix}${ev.msg ?? ''}`, ev.id, ev.ts)
+      return
+    default:
+      enqueueLog('info', `${prefix}${ev.kind}: ${ev.msg ?? ''}`, ev.id, ev.ts)
+  }
 }
 
 function connect() {
@@ -80,74 +176,54 @@ function connect() {
   disconnect()
   connecting.value = true
 
-  const url = getWsUrl()
-  ws = new WebSocket(url)
+  // Note: /v1 is proxied in dev (see vite.config.ts).
+  // EventSource can't set custom headers, so we use cookie auth primarily.
+  // Fallback: also send token via query (supports existing localStorage token).
+  const token = localStorage.getItem('token')
+  const url = token ? `/v1/task/status?token=${encodeURIComponent(token)}` : '/v1/task/status'
+  es = new EventSource(url, { withCredentials: true })
 
-  ws.onopen = () => {
+  es.onopen = () => {
     connecting.value = false
     isConnected.value = true
-    addLog('success', 'WebSocket 连接已建立')
+    enqueueLog('success', 'SSE 连接已建立')
   }
 
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data)
-      if (data.tid) {
-        addLog('stdout', `[TID:${data.tid}] ${data.msg || data.stdout || data.stderr}`)
-      } else {
-        addLog('info', data.msg || JSON.stringify(data))
-      }
-    } catch {
-      addLog('info', event.data)
+  es.onerror = () => {
+    connecting.value = false
+    isConnected.value = false
+
+    const now = Date.now()
+    if (now - lastErrorAt > 3000) {
+      // EventSource will auto-reconnect; keep this message lightweight.
+      enqueueLog('error', 'SSE 连接异常（自动重连中...）')
+      lastErrorAt = now
     }
   }
 
-  ws.onclose = () => {
-    connecting.value = false
-    isConnected.value = false
-    addLog('error', 'WebSocket 连接已断开，3秒后自动重连...')
-    reconnectTimer = setTimeout(() => connect(), 3000)
-  }
-
-  ws.onerror = () => {
-    connecting.value = false
-    isConnected.value = false
-    addLog('error', 'WebSocket 连接错误')
-  }
+  es.addEventListener('log', (event) => {
+    try {
+      const msgEvent = event as MessageEvent
+      const data = JSON.parse(msgEvent.data) as StreamEvent
+      onStreamEvent(data)
+    } catch {
+      enqueueLog('info', String((event as MessageEvent).data ?? ''))
+    }
+  })
 }
 
 function disconnect() {
-  if (ws) {
-    ws.close()
-    ws = null
+  if (es) {
+    es.close()
+    es = null
   }
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-    reconnectTimer = null
-  }
-}
-
-function addLog(type: LogMessage['type'], message: string) {
-  const timestamp = new Date().toLocaleTimeString('zh-CN', { hour12: false })
-  logs.value.push({ timestamp, message, type })
-
-  // 限制日志数量
-  if (logs.value.length > 1000) {
-    logs.value.shift()
-  }
-
-  // 自动滚动
-  if (autoScroll.value) {
-    nextTick(() => {
-      if (logContainerRef.value) {
-        logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight
-      }
-    })
-  }
+  connecting.value = false
+  isConnected.value = false
 }
 
 function clearLogs() {
   logs.value = []
+  pendingQueue.splice(0)
 }
 
 onMounted(() => {
@@ -156,6 +232,10 @@ onMounted(() => {
 
 onUnmounted(() => {
   disconnect()
+  if (flushHandle != null) {
+    window.cancelAnimationFrame(flushHandle)
+    flushHandle = null
+  }
 })
 </script>
 
@@ -308,7 +388,7 @@ onUnmounted(() => {
       padding: 16px;
       font-family: var(--font-family-mono);
       font-size: 13px;
-      scroll-behavior: smooth;
+      scroll-behavior: auto;
 
       &::-webkit-scrollbar {
         width: 8px;
