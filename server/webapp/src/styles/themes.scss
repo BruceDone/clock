@@ -1,0 +1,196 @@
+// ============================================
+// Clock 多主题系统 - CSS 变量定义
+// ============================================
+
+// 主题列表
+$themes: (
+  'light': (
+    // 背景色
+    --bg-primary: #ffffff,
+    --bg-secondary: #f5f7fa,
+    --bg-tertiary: #ebeef5,
+    --bg-card: rgba(255, 255, 255, 0.98),
+    --bg-glass: rgba(255, 255, 255, 0.7),
+
+    // 文字色
+    --text-primary: #303133,
+    --text-regular: #606266,
+    --text-secondary: #909399,
+    --text-muted: #c0c4cc,
+
+    // 边框
+    --border-color: #dcdfe6,
+    --border-color-light: #e4e7ed,
+    --border-color-lighter: #ebeef5,
+
+    // 主色
+    --primary-color: #409eff,
+    --primary-dim: #66b1ff,
+    --primary-glow: rgba(64, 158, 255, 0.3),
+    --primary-glow-strong: rgba(64, 158, 255, 0.5),
+
+    // 辅助色
+    --success-color: #67c23a,
+    --warning-color: #e6a23c,
+    --danger-color: #f56c6c,
+    --info-color: #909399,
+
+    // 阴影
+    --shadow-color: rgba(0, 0, 0, 0.1),
+    --shadow-card: 0 2px 12px 0 rgba(0, 0, 0, 0.1),
+    --shadow-glow: 0 0 20px rgba(64, 158, 255, 0.15),
+
+    // 表格
+    --table-bg: #ffffff,
+    --table-header-bg: #fafafa,
+    --table-row-hover: #f5f7fa,
+    --table-stripe: #fafafa,
+
+    // 输入框
+    --input-bg: #ffffff,
+    --input-border: #dcdfe6,
+    --input-placeholder: #c0c4cc
+  ),
+
+  'dark': (
+    // 背景色 - 柔和暗紫
+    --bg-primary: #1a1a2e,
+    --bg-secondary: #16213e,
+    --bg-tertiary: #0f3460,
+    --bg-card: rgba(26, 26, 46, 0.95),
+    --bg-glass: rgba(22, 33, 62, 0.7),
+
+    // 文字色
+    --text-primary: #e0e6ed,
+    --text-regular: #a0aec0,
+    --text-secondary: #718096,
+    --text-muted: #4a5568,
+
+    // 边框
+    --border-color: rgba(255, 255, 255, 0.1),
+    --border-color-light: rgba(255, 255, 255, 0.15),
+    --border-color-lighter: rgba(255, 255, 255, 0.08),
+
+    // 主色 - 紫色
+    --primary-color: #a78bfa,
+    --primary-dim: #8b5cf6,
+    --primary-glow: rgba(167, 139, 250, 0.3),
+    --primary-glow-strong: rgba(167, 139, 250, 0.5),
+
+    // 辅助色
+    --success-color: #34d399,
+    --warning-color: #fbbf24,
+    --danger-color: #f87171,
+    --info-color: #60a5fa,
+
+    // 阴影
+    --shadow-color: rgba(0, 0, 0, 0.3),
+    --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.3),
+    --shadow-glow: 0 0 30px rgba(167, 139, 250, 0.2),
+
+    // 表格
+    --table-bg: #1a1a2e,
+    --table-header-bg: #16213e,
+    --table-row-hover: rgba(167, 139, 250, 0.08),
+    --table-stripe: rgba(167, 139, 250, 0.03),
+
+    // 输入框
+    --input-bg: #1a1a2e,
+    --input-border: rgba(255, 255, 255, 0.15),
+    --input-placeholder: #4a5568
+  ),
+
+  'hacker': (
+    // 背景色 - 黑客终端
+    --bg-primary: #0a0f14,
+    --bg-secondary: #0f171f,
+    --bg-tertiary: #151d29,
+    --bg-card: rgba(15, 23, 35, 0.95),
+    --bg-glass: rgba(15, 23, 35, 0.7),
+
+    // 文字色
+    --text-primary: #e0e6ed,
+    --text-regular: #a0aec0,
+    --text-secondary: #8b9bb4,
+    --text-muted: #5c6b7f,
+
+    // 边框 - 绿色发光
+    --border-color: rgba(0, 255, 136, 0.15),
+    --border-color-light: rgba(0, 255, 136, 0.2),
+    --border-color-lighter: rgba(0, 255, 136, 0.08),
+
+    // 主色 - 黑客绿
+    --primary-color: #00ff88,
+    --primary-dim: #00cc6a,
+    --primary-glow: rgba(0, 255, 136, 0.3),
+    --primary-glow-strong: rgba(0, 255, 136, 0.5),
+
+    // 辅助色
+    --success-color: #00ff88,
+    --warning-color: #ffaa00,
+    --danger-color: #ff4466,
+    --info-color: #00ccff,
+
+    // 阴影
+    --shadow-color: rgba(0, 0, 0, 0.4),
+    --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4),
+    --shadow-glow: 0 0 20px rgba(0, 255, 136, 0.15),
+
+    // 表格
+    --table-bg: #0a0f14,
+    --table-header-bg: #0f171f,
+    --table-row-hover: rgba(0, 255, 136, 0.05),
+    --table-stripe: rgba(0, 255, 136, 0.02),
+
+    // 输入框
+    --input-bg: #0a0f14,
+    --input-border: rgba(0, 255, 136, 0.2),
+    --input-placeholder: #5c6b7f
+  )
+);
+
+// 注入主题 CSS 变量
+@mixin theme-vars($theme-name, $theme-map) {
+  [data-theme="#{$theme-name}"] {
+    @each $var, $value in $theme-map {
+      #{$var}: #{$value};
+    }
+  }
+}
+
+// 生成所有主题的 CSS 变量
+@each $theme-name, $theme-map in $themes {
+  @include theme-vars($theme-name, $theme-map);
+}
+
+// 全局 CSS 变量（不随主题变化）
+:root {
+  // 字体
+  --font-family-base: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family-mono: 'SF Mono', 'Consolas', 'Monaco', monospace;
+
+  // 字号
+  --font-size-base: 14px;
+  --font-size-small: 12px;
+  --font-size-medium: 16px;
+  --font-size-large: 18px;
+  --font-size-xl: 24px;
+
+  // 圆角
+  --border-radius-base: 6px;
+  --border-radius-lg: 10px;
+  --border-radius-xl: 14px;
+
+  // 过渡
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.3s ease;
+  --transition-slow: 0.5s ease;
+}
+
+// 主题过渡动画
+body,
+* {
+  transition: background-color var(--transition-base),
+              border-color var(--transition-base),
+              color var(--transition-base);
+}

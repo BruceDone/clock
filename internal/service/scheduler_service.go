@@ -5,10 +5,10 @@ import (
 	"os"
 
 	"github.com/robfig/cron/v3"
-	"github.com/sirupsen/logrus"
 
 	"clock/internal/domain"
 	apperrors "clock/internal/errors"
+	"clock/internal/logger"
 	"clock/internal/repository"
 )
 
@@ -56,16 +56,16 @@ func (s *schedulerService) Start() error {
 
 		if !container.Disable {
 			if err := s.AddJob(container); err != nil {
-				logrus.Errorf("[scheduler] failed to add job for container %s: %v", container.Name, err)
+				logger.Errorf("[scheduler] failed to add job for container %s: %v", container.Name, err)
 			}
 		}
 
 		if err := s.containerRepo.Save(container); err != nil {
-			logrus.Errorf("[scheduler] failed to save container %s: %v", container.Name, err)
+			logger.Errorf("[scheduler] failed to save container %s: %v", container.Name, err)
 		}
 	}
 
-	logrus.Info("[scheduler] starting cron scheduler")
+	logger.Info("[scheduler] starting cron scheduler")
 	s.cron.Start()
 
 	return nil
@@ -81,18 +81,18 @@ func (s *schedulerService) AddJob(container *domain.Container) error {
 	runFunc := func() {
 		tasks, err := s.taskRepo.GetByCID(container.Cid)
 		if err != nil {
-			logrus.Errorf("[scheduler] failed to get tasks for container %d: %v", container.Cid, err)
+			logger.Errorf("[scheduler] failed to get tasks for container %d: %v", container.Cid, err)
 			return
 		}
 
 		relations, err := s.relationRepo.GetByCID(container.Cid)
 		if err != nil {
-			logrus.Errorf("[scheduler] failed to get relations for container %d: %v", container.Cid, err)
+			logger.Errorf("[scheduler] failed to get relations for container %d: %v", container.Cid, err)
 			return
 		}
 
 		if err := s.executor.RunContainer(container, tasks, relations); err != nil {
-			logrus.Errorf("[scheduler] failed to run container %s: %v", container.Name, err)
+			logger.Errorf("[scheduler] failed to run container %s: %v", container.Name, err)
 		}
 	}
 
@@ -102,7 +102,7 @@ func (s *schedulerService) AddJob(container *domain.Container) error {
 	}
 
 	container.EntryID = int(entryID)
-	logrus.Infof("[scheduler] added job for container %s with entry id %d", container.Name, container.EntryID)
+	logger.Infof("[scheduler] added job for container %s with entry id %d", container.Name, container.EntryID)
 
 	return nil
 }

@@ -9,3 +9,5 @@ clock.db
 bin
 server/webapp/dist
 server/webapp/node_modules
+clock.log
+clock.db

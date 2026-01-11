@@ -1,58 +1,119 @@
 <template>
   <div class="task-list">
-    <el-card shadow="never">
-      <template #header>
-        <div class="card-header">
-          <el-select v-model="filterCid" placeholder="选择容器" clearable style="width: 200px" @change="fetchList">
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <div class="header-left">
+        <h1 class="page-title">任务管理</h1>
+        <p class="page-subtitle">管理系统任务和执行计划</p>
+      </div>
+    </div>
+
+    <!-- 操作栏 -->
+    <el-card class="filter-card">
+      <div class="filter-bar">
+        <div class="filter-left">
+          <el-select
+            v-model="filterCid"
+            placeholder="选择容器"
+            clearable
+            class="filter-select"
+            @change="fetchList"
+          >
+            <template #prefix>
+              <el-icon><Box /></el-icon>
+            </template>
             <el-option v-for="c in containers" :key="c.cid" :label="c.name" :value="c.cid" />
           </el-select>
+        </div>
+        <div class="filter-right">
           <el-button type="primary" @click="showDialog = true">
             <el-icon><Plus /></el-icon>
             新增任务
           </el-button>
         </div>
-      </template>
+      </div>
+    </el-card>
 
-      <el-table :data="list" v-loading="loading" stripe>
-        <el-table-column prop="tid" label="ID" width="80" />
-        <el-table-column prop="name" label="名称" />
-        <el-table-column prop="command" label="命令" show-overflow-tooltip />
+    <!-- 任务表格 -->
+    <el-card class="table-card">
+      <el-table :data="list" v-loading="loading" stripe class="task-table">
+        <el-table-column prop="tid" label="ID" width="80">
+          <template #default="{ row }">
+            <span class="cell-id">#{{ row.tid }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="name" label="任务名称" min-width="150">
+          <template #default="{ row }">
+            <div class="task-name">
+              <el-icon><List /></el-icon>
+              <span>{{ row.name }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="command" label="执行命令" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            <code class="command-text">{{ row.command }}</code>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)" size="small">
+            <el-tag :type="getStatusType(row.status)" class="status-tag" effect="dark">
+              <span class="status-dot" :class="`status-${row.status}`"></span>
               {{ getStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="timeout" label="超时(秒)" width="100" />
+        <el-table-column prop="timeout" label="超时" width="100">
+          <template #default="{ row }">
+            <span class="cell-time">{{ row.timeout }}s</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="log_enable" label="日志" width="80">
           <template #default="{ row }">
-            <el-tag :type="row.log_enable ? 'success' : 'info'" size="small">
-              {{ row.log_enable ? '是' : '否' }}
-            </el-tag>
+            <el-icon v-if="row.log_enable" class="cell-icon success"><CircleCheckFilled /></el-icon>
+            <el-icon v-else class="cell-icon disabled"><CircleCloseFilled /></el-icon>
           </template>
         </el-table-column>
-        <el-table-column prop="disable" label="启用" width="80">
+        <el-table-column prop="disable" label="启用" width="100">
           <template #default="{ row }">
-            <el-switch v-model="row.disable" :active-value="false" :inactive-value="true" @change="handleToggle(row)" />
+            <el-switch
+              v-model="row.disable"
+              :active-value="false"
+              :inactive-value="true"
+              active-color="#00ff88"
+              inactive-color="#5c6b7f"
+              @change="handleToggle(row)"
+            />
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="success" link @click="handleRun(row)">运行</el-button>
-            <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
+            <div class="action-buttons">
+              <el-button type="primary" link @click="handleEdit(row)">
+                <el-icon><Edit /></el-icon>
+                编辑
+              </el-button>
+              <el-button type="success" link @click="handleRun(row)">
+                <el-icon><VideoPlay /></el-icon>
+                运行
+              </el-button>
+              <el-button type="danger" link @click="handleDelete(row)">
+                <el-icon><Delete /></el-icon>
+                删除
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
 
-      <div class="pagination">
+      <div class="pagination-wrapper">
         <el-pagination
           v-model:current-page="page.index"
           v-model:page-size="page.count"
           :total="page.total"
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next"
+          background
           @size-change="fetchList"
           @current-change="fetchList"
         />
@@ -60,32 +121,60 @@
     </el-card>
 
     <!-- 新增/编辑对话框 -->
-    <el-dialog v-model="showDialog" :title="isEdit ? '编辑任务' : '新增任务'" width="600px">
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="所属容器">
+    <el-dialog v-model="showDialog" :title="isEdit ? '编辑任务' : '新增任务'" width="600px" class="task-dialog">
+      <template #header>
+        <div class="dialog-header">
+          <el-icon><component :is="isEdit ? 'Edit' : 'Plus'" /></el-icon>
+          <span>{{ isEdit ? '编辑任务' : '新增任务' }}</span>
+        </div>
+      </template>
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" class="task-form">
+        <el-form-item label="所属容器" prop="cid">
           <el-select v-model="form.cid" placeholder="选择容器" style="width: 100%">
+            <template #prefix>
+              <el-icon><Box /></el-icon>
+            </template>
             <el-option v-for="c in containers" :key="c.cid" :label="c.name" :value="c.cid" />
           </el-select>
         </el-form-item>
         <el-form-item label="任务名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入任务名称" />
+          <el-input v-model="form.name" placeholder="请输入任务名称">
+            <template #prefix>
+              <el-icon><List /></el-icon>
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item label="Bash 命令" prop="command">
           <el-input v-model="form.command" type="textarea" :rows="3" placeholder="请输入要执行的 bash 命令" />
         </el-form-item>
         <el-form-item label="工作目录" prop="directory">
-          <el-input v-model="form.directory" placeholder="命令执行的工作目录，留空则使用默认目录" />
+          <el-input v-model="form.directory" placeholder="命令执行的工作目录，留空则使用默认目录">
+            <template #prefix>
+              <el-icon><FolderOpened /></el-icon>
+            </template>
+          </el-input>
         </el-form-item>
-        <el-form-item label="超时时间(秒)">
-          <el-input-number v-model="form.timeout" :min="0" :step="10" />
-        </el-form-item>
-        <el-form-item label="启用日志">
-          <el-switch v-model="form.log_enable" />
-        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="超时时间(秒)">
+              <el-input-number v-model="form.timeout" :min="0" :step="10" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="启用日志">
+              <el-switch v-model="form.log_enable" active-text="是" inactive-text="否" />
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
-        <el-button @click="showDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <div class="dialog-footer">
+          <el-button @click="showDialog = false">取消</el-button>
+          <el-button type="primary" @click="handleSubmit">
+            <el-icon><Check /></el-icon>
+            确定
+          </el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -217,17 +306,207 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+// Task List 页面样式 - 使用 CSS 变量
+
 .task-list {
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  .page-header {
+    margin-bottom: 24px;
+
+    .page-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--text-primary), var(--primary-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .page-subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
   }
 
-  .pagination {
-    margin-top: 20px;
+  .filter-card {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--border-radius-lg) !important;
+    margin-bottom: 24px;
+    backdrop-filter: blur(10px);
+
+    :deep(.el-card__body) {
+      padding: 16px 20px;
+    }
+
+    .filter-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .filter-select {
+        width: 240px;
+      }
+
+      :deep(.el-input__wrapper) {
+        background: var(--input-bg) !important;
+      }
+    }
+  }
+
+  .table-card {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--border-radius-lg) !important;
+    backdrop-filter: blur(10px);
+
+    :deep(.el-card__body) {
+      padding: 0;
+    }
+  }
+
+  .task-table {
+    :deep(.el-table__row) {
+      transition: all 0.2s ease;
+      background: var(--table-bg) !important;
+
+      &:hover {
+        background: var(--table-row-hover) !important;
+      }
+    }
+
+    .cell-id {
+      font-family: var(--font-family-mono);
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    .task-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-primary);
+
+      .el-icon {
+        color: var(--primary-color);
+      }
+    }
+
+    .command-text {
+      font-family: var(--font-family-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: rgba(var(--primary-color), 0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .status-tag {
+      border: none !important;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+
+        &.status-1 { background: var(--text-muted); }
+        &.status-2 { background: var(--info-color); animation: status-pulse 1s infinite; }
+        &.status-3 { background: var(--success-color); }
+        &.status-4 { background: var(--danger-color); }
+      }
+    }
+
+    @keyframes status-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .cell-time {
+      font-family: var(--font-family-mono);
+      color: var(--text-secondary);
+    }
+
+    .cell-icon {
+      font-size: 18px;
+
+      &.success { color: var(--success-color); }
+      &.disabled { color: var(--text-muted); }
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+
+      .el-button {
+        padding: 4px 8px;
+        font-size: 13px;
+
+        .el-icon {
+          margin-right: 4px;
+        }
+      }
+    }
+  }
+
+  .pagination-wrapper {
     display: flex;
     justify-content: flex-end;
+    padding: 20px;
+    border-top: 1px solid var(--border-color-light);
+
+    :deep(.el-pagination) {
+      --el-pagination-bg-color: var(--bg-primary);
+      --el-pagination-text-color: var(--text-primary);
+      --el-pagination-button-bg-color: var(--bg-secondary);
+      --el-pagination-hover-color: var(--primary-color);
+    }
+  }
+}
+
+.task-dialog {
+  .dialog-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary-color);
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .task-form {
+    :deep(.el-form-item__label) {
+      color: var(--text-secondary);
+    }
+
+    :deep(.el-input__wrapper) {
+      background: var(--input-bg) !important;
+    }
+
+    :deep(.el-textarea__inner) {
+      background: var(--input-bg) !important;
+      color: var(--text-primary) !important;
+    }
+
+    :deep(.el-input-number) {
+      .el-input__wrapper {
+        background: var(--input-bg) !important;
+      }
+    }
+
+    :deep(.el-switch) {
+      --el-switch-off-color: var(--text-muted);
+    }
+  }
+
+  .dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
   }
 }
 </style>

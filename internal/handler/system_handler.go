@@ -2,8 +2,8 @@ package handler
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/sirupsen/logrus"
 
+	"clock/internal/logger"
 	"clock/internal/service"
 )
 
@@ -23,7 +23,7 @@ func NewSystemHandler(systemService service.SystemService) *SystemHandler {
 func (h *SystemHandler) GetLoadAverage(c echo.Context) error {
 	load, err := h.systemService.GetLoadAverage()
 	if err != nil {
-		logrus.Errorf("[GetLoadAverage] failed: %v", err)
+		logger.Errorf("[GetLoadAverage] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -34,7 +34,7 @@ func (h *SystemHandler) GetLoadAverage(c echo.Context) error {
 func (h *SystemHandler) GetMemoryUsage(c echo.Context) error {
 	usage, err := h.systemService.GetMemoryUsage()
 	if err != nil {
-		logrus.Errorf("[GetMemoryUsage] failed: %v", err)
+		logger.Errorf("[GetMemoryUsage] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -45,7 +45,7 @@ func (h *SystemHandler) GetMemoryUsage(c echo.Context) error {
 func (h *SystemHandler) GetCPUUsage(c echo.Context) error {
 	usage, err := h.systemService.GetCPUUsage()
 	if err != nil {
-		logrus.Errorf("[GetCPUUsage] failed: %v", err)
+		logger.Errorf("[GetCPUUsage] failed: %v", err)
 		return HandleError(c, err)
 	}
 

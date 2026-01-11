@@ -9,9 +9,9 @@ import (
 	"time"
 
 	uuid "github.com/nu7hatch/gouuid"
-	"github.com/sirupsen/logrus"
 
 	"clock/internal/domain"
+	"clock/internal/logger"
 	"clock/internal/repository"
 	"clock/pkg/util"
 )
@@ -48,7 +48,7 @@ func (e *Executor) RunTask(task *domain.Task) error {
 	task.Status = domain.StatusStart
 	defer func() {
 		task.UpdateAt = time.Now().Unix()
-		logrus.Debugf("[%d] finished task [%s]", task.Tid, task.Name)
+		logger.Debugf("[%d] finished task [%s]", task.Tid, task.Name)
 		_ = e.taskRepo.Save(task)
 		e.saveLog(task, stdOutBuf, stdErrBuf)
 	}()
@@ -58,7 +58,7 @@ func (e *Executor) RunTask(task *domain.Task) error {
 		return errors.New("command cannot be empty")
 	}
 
-	logrus.Debugf("[%d] running task [%s]", task.Tid, task.Name)
+	logger.Debugf("[%d] running task [%s]", task.Tid, task.Name)
 	_ = e.taskRepo.Save(task)
 
 	// 解析命令
@@ -84,7 +84,7 @@ func (e *Executor) RunTask(task *domain.Task) error {
 		case <-timeout:
 			_ = cmd.Process.Kill()
 			task.Status = domain.StatusFailure
-			logrus.Errorf("task %s reached timeout limit", task.Name)
+			logger.Errorf("task %s reached timeout limit", task.Name)
 			return fmt.Errorf("task %s timeout", task.Name)
 		case err := <-done:
 			if err != nil {
@@ -174,7 +174,7 @@ func (e *Executor) runStageTasks(tasks []*domain.Task, relations []*domain.Relat
 	copy(relationList, relations)
 
 	for {
-		logrus.Debugf("[executor] stage %d", stage)
+		logger.Debugf("[executor] stage %d", stage)
 
 		if len(taskList) == 0 {
 			break
@@ -204,14 +204,14 @@ func (e *Executor) runStageTasks(tasks []*domain.Task, relations []*domain.Relat
 
 		// 存在环，终止
 		if len(rootTids) == 0 {
-			logrus.Warn("[executor] circular dependency detected")
+			logger.Warnf("[executor] circular dependency detected")
 			break
 		}
 
 		// 执行当前阶段的任务
 		for _, tid := range rootTids {
 			if err := e.RunTaskByID(tid); err != nil {
-				logrus.Errorf("[executor] task %d failed: %v", tid, err)
+				logger.Errorf("[executor] task %d failed: %v", tid, err)
 			}
 		}
 

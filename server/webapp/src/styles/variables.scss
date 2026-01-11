@@ -1,22 +1,42 @@
-// 全局变量
-$primary-color: #409eff;
-$success-color: #67c23a;
-$warning-color: #e6a23c;
-$danger-color: #f56c6c;
-$info-color: #909399;
+// ============================================
+// Clock 主题变量
+// ============================================
+// 注意：此文件已废弃，请使用 themes.scss 中的 CSS 变量
+// CSS 变量通过 themes.scss 自动注入，格式为 --bg-primary, --text-primary 等
+// SCSS 变量 themes 映射保存在 themes.scss 中
 
-$text-primary: #303133;
-$text-regular: #606266;
-$text-secondary: #909399;
-$text-placeholder: #c0c4cc;
+// 保留向后兼容
+$primary-color: var(--primary-color);
+$success-color: var(--success-color);
+$warning-color: var(--warning-color);
+$danger-color: var(--danger-color);
+$info-color: var(--info-color);
 
-$border-color: #dcdfe6;
-$border-color-light: #e4e7ed;
-$border-color-lighter: #ebeef5;
+$text-primary: var(--text-primary);
+$text-regular: var(--text-regular);
+$text-secondary: var(--text-secondary);
+$text-muted: var(--text-muted);
 
-$background-color: #f5f7fa;
+$border-color: var(--border-color);
+$border-color-light: var(--border-color-light);
 
-$font-size-base: 14px;
-$font-size-small: 12px;
-$font-size-medium: 16px;
-$font-size-large: 18px;
+$bg-primary: var(--bg-primary);
+$bg-secondary: var(--bg-secondary);
+$bg-card: var(--bg-card);
+$bg-glass: var(--bg-glass);
+
+$font-family-base: var(--font-family-base);
+$font-family-mono: var(--font-family-mono);
+
+$font-size-base: var(--font-size-base);
+$font-size-small: var(--font-size-small);
+$font-size-medium: var(--font-size-medium);
+$font-size-large: var(--font-size-large);
+
+$border-radius-base: var(--border-radius-base);
+$border-radius-lg: var(--border-radius-lg);
+$border-radius-xl: var(--border-radius-xl);
+
+$transition-fast: var(--transition-fast);
+$transition-base: var(--transition-base);
+$transition-slow: var(--transition-slow);

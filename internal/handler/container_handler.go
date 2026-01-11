@@ -2,9 +2,9 @@ package handler
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/sirupsen/logrus"
 
 	"clock/internal/domain"
+	"clock/internal/logger"
 	"clock/internal/repository"
 	"clock/internal/service"
 )
@@ -34,7 +34,7 @@ func (h *ContainerHandler) GetContainers(c echo.Context) error {
 
 	result, err := h.containerService.List(query)
 	if err != nil {
-		logrus.Errorf("[GetContainers] failed: %v", err)
+		logger.Errorf("[GetContainers] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -50,7 +50,7 @@ func (h *ContainerHandler) GetContainer(c echo.Context) error {
 
 	container, err := h.containerService.Get(cid)
 	if err != nil {
-		logrus.Errorf("[GetContainer] failed: %v", err)
+		logger.Errorf("[GetContainer] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -65,7 +65,7 @@ func (h *ContainerHandler) PutContainer(c echo.Context) error {
 	}
 
 	if err := h.containerService.Save(&container); err != nil {
-		logrus.Errorf("[PutContainer] failed: %v", err)
+		logger.Errorf("[PutContainer] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -80,7 +80,7 @@ func (h *ContainerHandler) DeleteContainer(c echo.Context) error {
 	}
 
 	if err := h.containerService.Delete(cid); err != nil {
-		logrus.Errorf("[DeleteContainer] failed: %v", err)
+		logger.Errorf("[DeleteContainer] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -95,7 +95,7 @@ func (h *ContainerHandler) RunContainer(c echo.Context) error {
 	}
 
 	if err := h.containerService.Run(cid); err != nil {
-		logrus.Errorf("[RunContainer] failed: %v", err)
+		logger.Errorf("[RunContainer] failed: %v", err)
 		return HandleError(c, err)
 	}
 

@@ -2,9 +2,9 @@ package handler
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/sirupsen/logrus"
 
 	"clock/internal/domain"
+	"clock/internal/logger"
 	"clock/internal/service"
 )
 
@@ -29,7 +29,7 @@ func (h *RelationHandler) GetRelations(c echo.Context) error {
 
 	graph, err := h.relationService.GetGraph(cid)
 	if err != nil {
-		logrus.Errorf("[GetRelations] failed: %v", err)
+		logger.Errorf("[GetRelations] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -44,7 +44,7 @@ func (h *RelationHandler) AddRelation(c echo.Context) error {
 	}
 
 	if err := h.relationService.Add(&relation); err != nil {
-		logrus.Errorf("[AddRelation] failed: %v", err)
+		logger.Errorf("[AddRelation] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -59,7 +59,7 @@ func (h *RelationHandler) DeleteRelation(c echo.Context) error {
 	}
 
 	if err := h.relationService.Delete(rid); err != nil {
-		logrus.Errorf("[DeleteRelation] failed: %v", err)
+		logger.Errorf("[DeleteRelation] failed: %v", err)
 		return HandleError(c, err)
 	}
 

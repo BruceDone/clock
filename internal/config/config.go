@@ -1,10 +1,9 @@
 package config
 
 import (
-	"os"
-
 	"github.com/BurntSushi/toml"
-	"github.com/sirupsen/logrus"
+
+	"clock/internal/logger"
 )
 
 // Config 应用配置
@@ -29,8 +28,13 @@ type StorageConfig struct {
 
 // LogConfig 日志配置
 type LogConfig struct {
-	Level    string `toml:"level"`
-	FilePath string `toml:"filepath"`
+	Level      string `toml:"level"`       // 日志级别: debug, info, warn, error
+	FilePath   string `toml:"filepath"`    // 日志文件路径
+	MaxSize    int    `toml:"max_size"`    // 单个日志文件最大大小（MB），默认 100MB
+	MaxBackups int    `toml:"max_backups"` // 保留的旧日志文件数量，默认 5
+	MaxAge     int    `toml:"max_age"`     // 日志文件保留天数，默认 7 天
+	Compress   bool   `toml:"compress"`    // 是否压缩旧日志文件，默认 true
+	LocalTime  bool   `toml:"local_time"`  // 是否使用本地时间，默认 true
 }
 
 // AuthConfig 认证配置
@@ -57,31 +61,19 @@ func Load(path string) (*Config, error) {
 		cfg.Message.Size = 1000
 	}
 
-	// 配置日志级别
-	configureLogger(&cfg.Log)
+	// 初始化日志
+	logCfg := &logger.Config{
+		Level:      cfg.Log.Level,
+		FilePath:   cfg.Log.FilePath,
+		MaxSize:    cfg.Log.MaxSize,
+		MaxBackups: cfg.Log.MaxBackups,
+		MaxAge:     cfg.Log.MaxAge,
+		Compress:   cfg.Log.Compress,
+		LocalTime:  cfg.Log.LocalTime,
+	}
+	if err := logger.Init(logCfg); err != nil {
+		return nil, err
+	}
 
 	return &cfg, nil
-}
-
-// configureLogger 配置日志
-func configureLogger(cfg *LogConfig) {
-	switch cfg.Level {
-	case "debug":
-		logrus.SetLevel(logrus.DebugLevel)
-	case "info":
-		logrus.SetLevel(logrus.InfoLevel)
-	case "warn":
-		logrus.SetLevel(logrus.WarnLevel)
-	case "error":
-		logrus.SetLevel(logrus.ErrorLevel)
-	default:
-		logrus.SetLevel(logrus.InfoLevel)
-	}
-
-	if cfg.FilePath != "" {
-		file, err := os.OpenFile(cfg.FilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-		if err == nil {
-			logrus.SetOutput(file)
-		}
-	}
 }

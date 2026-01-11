@@ -10,6 +10,11 @@ conn = "clock.db"
 [log]
 level = "info"
 filepath = "clock.log"
+max_size = 100      # 单个日志文件最大大小（MB）
+max_backups = 5     # 保留的旧日志文件数量
+max_age = 7         # 日志文件保留天数
+compress = true     # 是否压缩旧日志文件
+local_time = true   # 是否使用本地时间
 
 [auth]
 user = "admin"

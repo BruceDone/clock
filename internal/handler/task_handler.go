@@ -2,9 +2,9 @@ package handler
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/sirupsen/logrus"
 
 	"clock/internal/domain"
+	"clock/internal/logger"
 	"clock/internal/repository"
 	"clock/internal/service"
 )
@@ -35,7 +35,7 @@ func (h *TaskHandler) GetTasks(c echo.Context) error {
 
 	result, err := h.taskService.List(query)
 	if err != nil {
-		logrus.Errorf("[GetTasks] failed: %v", err)
+		logger.Errorf("[GetTasks] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -51,7 +51,7 @@ func (h *TaskHandler) GetTask(c echo.Context) error {
 
 	task, err := h.taskService.Get(tid)
 	if err != nil {
-		logrus.Errorf("[GetTask] failed: %v", err)
+		logger.Errorf("[GetTask] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -66,7 +66,7 @@ func (h *TaskHandler) PutTask(c echo.Context) error {
 	}
 
 	if err := h.taskService.Save(&task); err != nil {
-		logrus.Errorf("[PutTask] failed: %v", err)
+		logger.Errorf("[PutTask] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -81,7 +81,7 @@ func (h *TaskHandler) DeleteTask(c echo.Context) error {
 	}
 
 	if err := h.taskService.Delete(tid); err != nil {
-		logrus.Errorf("[DeleteTask] failed: %v", err)
+		logger.Errorf("[DeleteTask] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -96,7 +96,7 @@ func (h *TaskHandler) RunTask(c echo.Context) error {
 	}
 
 	if err := h.taskService.Run(tid); err != nil {
-		logrus.Errorf("[RunTask] failed: %v", err)
+		logger.Errorf("[RunTask] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -111,7 +111,7 @@ func (h *TaskHandler) PutNodes(c echo.Context) error {
 	}
 
 	if err := h.taskService.UpdateNodes(nodes); err != nil {
-		logrus.Errorf("[PutNodes] failed: %v", err)
+		logger.Errorf("[PutNodes] failed: %v", err)
 		return HandleError(c, err)
 	}
 

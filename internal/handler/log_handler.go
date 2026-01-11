@@ -2,8 +2,8 @@ package handler
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/sirupsen/logrus"
 
+	"clock/internal/logger"
 	"clock/internal/repository"
 	"clock/internal/service"
 )
@@ -35,7 +35,7 @@ func (h *LogHandler) GetLogs(c echo.Context) error {
 
 	result, err := h.taskLogService.List(query)
 	if err != nil {
-		logrus.Errorf("[GetLogs] failed: %v", err)
+		logger.Errorf("[GetLogs] failed: %v", err)
 		return HandleError(c, err)
 	}
 
@@ -54,7 +54,7 @@ func (h *LogHandler) DeleteLogs(c echo.Context) error {
 	}
 
 	if err := h.taskLogService.Delete(query); err != nil {
-		logrus.Errorf("[DeleteLogs] failed: %v", err)
+		logger.Errorf("[DeleteLogs] failed: %v", err)
 		return HandleError(c, err)
 	}
 

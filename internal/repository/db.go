@@ -5,10 +5,11 @@ import (
 	"clock/internal/domain"
 
 	"github.com/glebarez/sqlite"
-	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"clock/internal/logger"
 )
 
 // NewDB 创建数据库连接
@@ -24,7 +25,7 @@ func NewDB(cfg *config.StorageConfig) (*gorm.DB, error) {
 	case domain.DBBackendPostgres:
 		db, err = gorm.Open(postgres.Open(cfg.Conn), &gorm.Config{})
 	default:
-		logrus.Fatalf("unsupported database backend: %s", cfg.Backend)
+		logger.Fatalf("unsupported database backend: %s", cfg.Backend)
 	}
 
 	if err != nil {

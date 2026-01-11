@@ -92,15 +92,15 @@ const contextMenu = reactive({
 let particles: Particle[] = []
 const PARTICLE_COUNT = 50
 
-// 状态颜色映射
+// 状态颜色映射 - 黑客终端风格
 function getStatusColor(status: number): string {
   const colors: Record<number, string> = {
-    1: '#909399', // pending - 灰色
-    2: '#409EFF', // running - 蓝色
-    3: '#67C23A', // success - 绿色
-    4: '#F56C6C'  // failure - 红色
+    1: '#5c6b7f', // pending - 灰色
+    2: '#00ccff', // running - 青色
+    3: '#00ff88', // success - 绿色
+    4: '#ff4466'  // failure - 红色
   }
-  return colors[status] || '#909399'
+  return colors[status] || '#5c6b7f'
 }
 
 // 初始化粒子
@@ -119,7 +119,7 @@ function createParticle(): Particle {
     vy: (Math.random() - 0.5) * 0.5,
     radius: Math.random() * 2 + 1,
     alpha: Math.random() * 0.5 + 0.1,
-    color: `hsla(${210 + Math.random() * 30}, 70%, 60%, `
+    color: `hsla(140, 100%, 50%, ` // 绿色系
   }
 }
 
@@ -159,7 +159,7 @@ function drawParticles() {
         ctx!.beginPath()
         ctx!.moveTo(p1.x, p1.y)
         ctx!.lineTo(p2.x, p2.y)
-        ctx!.strokeStyle = `rgba(64, 158, 255, ${0.1 * (1 - dist / 100)})`
+        ctx!.strokeStyle = `rgba(0, 255, 136, ${0.15 * (1 - dist / 100)})`
         ctx!.lineWidth = 0.5
         ctx!.stroke()
       }
@@ -280,7 +280,7 @@ function drawEdges() {
     if (!sourceNode || !targetNode) return
 
     const isHovered = interaction.hoveredEdge?.id === edge.id
-    const color = isHovered ? '#409EFF' : '#A3B1BF'
+    const color = isHovered ? '#00ff88' : 'rgba(0, 255, 136, 0.4)'
     drawArrow(sourceNode.x, sourceNode.y, targetNode.x, targetNode.y, color)
   })
 }
@@ -292,7 +292,7 @@ function drawConnectingLine() {
   ctx.beginPath()
   ctx.moveTo(interaction.connectSource.x, interaction.connectSource.y)
   ctx.lineTo(interaction.connectTargetX, interaction.connectTargetY)
-  ctx.strokeStyle = '#409EFF'
+  ctx.strokeStyle = '#00ff88'
   ctx.lineWidth = 2
   ctx.setLineDash([5, 5])
   ctx.stroke()
@@ -306,8 +306,8 @@ function draw() {
   // 清空画布
   ctx.clearRect(0, 0, canvasState.width, canvasState.height)
 
-  // 绘制背景
-  ctx.fillStyle = '#fafafa'
+  // 绘制背景 - 深色终端风格
+  ctx.fillStyle = '#0a0f14'
   ctx.fillRect(0, 0, canvasState.width, canvasState.height)
 
   // 绘制网格
@@ -332,12 +332,12 @@ function draw() {
   animationId = requestAnimationFrame(draw)
 }
 
-// 绘制网格
+// 绘制网格 - 绿色主题
 function drawGrid() {
   if (!ctx) return
 
   const gridSize = 30
-  ctx.strokeStyle = '#eee'
+  ctx.strokeStyle = 'rgba(0, 255, 136, 0.08)'
   ctx.lineWidth = 0.5
 
   for (let x = 0; x <= canvasState.width; x += gridSize) {
@@ -631,22 +631,24 @@ watch(() => [props.nodes, props.edges], () => {
 
   .context-menu {
     position: absolute;
-    background: #fff;
-    border: 1px solid #e4e7ed;
-    border-radius: 4px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    background: rgba(15, 23, 35, 0.95);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
     padding: 5px 0;
     z-index: 100;
+    backdrop-filter: blur(10px);
 
     .menu-item {
       padding: 8px 16px;
       cursor: pointer;
       font-size: 14px;
-      color: #606266;
+      color: #a0aec0;
+      transition: all 0.2s ease;
 
       &:hover {
-        background: #f5f7fa;
-        color: #409EFF;
+        background: rgba(0, 255, 136, 0.15);
+        color: #00ff88;
       }
     }
   }

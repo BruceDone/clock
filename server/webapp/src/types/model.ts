@@ -109,8 +109,8 @@ export interface ApiResponse<T = unknown> {
 
 // 登录请求
 export interface LoginRequest {
-  user_name: string
-  user_pwd: string
+  user: string
+  pwd: string
 }
 
 // 登录响应
