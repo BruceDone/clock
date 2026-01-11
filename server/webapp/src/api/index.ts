@@ -1,7 +1,8 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 
-const BASE_URL = import.meta.env.DEV ? '' : '/v1'
+// 统一使用 /v1 前缀
+const BASE_URL = '/v1'
 
 // 创建 axios 实例
 const service: AxiosInstance = axios.create({

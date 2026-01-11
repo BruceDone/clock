@@ -51,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { getMessages } from '@/api/message'
 import { getSystemLoad, getSystemMem, getSystemCpu } from '@/api/system'
@@ -63,6 +63,7 @@ const cpuChartRef = ref<HTMLElement>()
 let memChart: echarts.ECharts | null = null
 let loadChart: echarts.ECharts | null = null
 let cpuChart: echarts.ECharts | null = null
+let refreshTimer: number | null = null
 
 interface StatItem {
   title: string
@@ -74,17 +75,27 @@ interface StatItem {
 const stats = ref<StatItem[]>([
   { title: '等待运行', icon: 'Clock', count: 0, color: '#909399' },
   { title: '正在运行', icon: 'Loading', count: 0, color: '#409EFF' },
-  { title: '运行成功', icon: 'SuccessFilled', count: 0, color: '#67C23A' },
-  { title: '运行失败', icon: 'CloseFilled', count: 0, color: '#F56C6C' }
+  { title: '运行成功', icon: 'CircleCheckFilled', count: 0, color: '#67C23A' },
+  { title: '运行失败', icon: 'CircleCloseFilled', count: 0, color: '#F56C6C' }
 ])
 
 async function fetchStats() {
   try {
     const res = await getMessages()
-    if (res.data) {
+    if (res.data && Array.isArray(res.data)) {
+      // 映射后端返回的 icon 到 Element Plus 图标组件名
+      const iconMap: Record<string, string> = {
+        'container': 'Box',
+        'task': 'List',
+        'running': 'Loading',
+        'success': 'CircleCheckFilled',
+        'failure': 'CircleCloseFilled',
+        'pending': 'Clock'
+      }
+      
       stats.value = res.data.map((item: any) => ({
         title: item.title,
-        icon: item.icon || 'InfoFilled',
+        icon: iconMap[item.icon] || 'InfoFilled',
         count: item.count,
         color: item.color || '#909399'
       }))
@@ -97,7 +108,9 @@ async function fetchStats() {
 async function fetchMemChart() {
   try {
     const res = await getSystemMem()
-    if (res.data) {
+    if (res.data !== undefined && res.data !== null) {
+      const usedPercent = res.data
+      const freePercent = 100 - usedPercent
       const option = {
         tooltip: { trigger: 'item' as const },
         legend: { bottom: 0 },
@@ -106,7 +119,10 @@ async function fetchMemChart() {
           radius: ['40%', '70%'],
           avoidLabelOverlap: false,
           label: { show: false },
-          data: res.data
+          data: [
+            { name: '已使用', value: usedPercent },
+            { name: '空闲', value: freePercent }
+          ]
         }]
       }
       memChart?.setOption(option)
@@ -119,16 +135,16 @@ async function fetchMemChart() {
 async function fetchLoadChart() {
   try {
     const res = await getSystemLoad()
-    if (res.data) {
+    if (res.data && Array.isArray(res.data) && res.data.length >= 3) {
       const option = {
         tooltip: { trigger: 'axis' as const },
         legend: { data: ['1分钟', '5分钟', '15分钟'] },
         xAxis: { type: 'category', data: ['当前'] },
         yAxis: { type: 'value' },
         series: [
-          { name: '1分钟', type: 'bar', data: [res.data.load1] },
-          { name: '5分钟', type: 'bar', data: [res.data.load5] },
-          { name: '15分钟', type: 'bar', data: [res.data.load15] }
+          { name: '1分钟', type: 'bar', data: [res.data[0]] },
+          { name: '5分钟', type: 'bar', data: [res.data[1]] },
+          { name: '15分钟', type: 'bar', data: [res.data[2]] }
         ]
       }
       loadChart?.setOption(option)
@@ -141,19 +157,18 @@ async function fetchLoadChart() {
 async function fetchCpuChart() {
   try {
     const res = await getSystemCpu()
-    if (res.data) {
-      const names = Object.keys(res.data)
-      const values = Object.values(res.data)
+    if (res.data !== undefined && res.data !== null) {
+      const cpuPercent = res.data
       const option = {
         tooltip: { trigger: 'axis' as const },
-        legend: { data: names },
-        xAxis: { type: 'category', data: ['CPU 使用率'] },
+        legend: { data: ['CPU 使用率'] },
+        xAxis: { type: 'category', data: ['当前'] },
         yAxis: { type: 'value', max: 100 },
-        series: names.map((name, index) => ({
-          name,
+        series: [{
+          name: 'CPU 使用率',
           type: 'bar',
-          data: [values[index]]
-        }))
+          data: [cpuPercent]
+        }]
       }
       cpuChart?.setOption(option)
     }
@@ -180,16 +195,30 @@ function handleResize() {
   cpuChart?.resize()
 }
 
-onMounted(() => {
+async function loadData() {
+  await fetchStats()
+  await fetchMemChart()
+  await fetchLoadChart()
+  await fetchCpuChart()
+}
+
+onMounted(async () => {
+  // 等待 DOM 渲染完成
+  await nextTick()
   initCharts()
-  fetchStats()
-  fetchMemChart()
-  fetchLoadChart()
-  fetchCpuChart()
+  // 立即加载一次数据
+  await loadData()
+  // 设置定时刷新，每5秒刷新一次
+  refreshTimer = window.setInterval(() => {
+    loadData()
+  }, 5000)
   window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
+  if (refreshTimer !== null) {
+    clearInterval(refreshTimer)
+  }
   window.removeEventListener('resize', handleResize)
   memChart?.dispose()
   loadChart?.dispose()

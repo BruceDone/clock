@@ -12,7 +12,7 @@
           <template #header>
             <div class="card-header">
               <span>任务列表</span>
-              <el-button type="primary" size="small" @click="showTaskDialog = true">新增任务</el-button>
+              <el-button type="primary" size="small" @click="showAddTaskDialog">新增任务</el-button>
             </div>
           </template>
           <div class="task-list">
@@ -34,13 +34,27 @@
           <template #header>
             <div class="card-header">
               <span>DAG 关系图</span>
-              <el-button-group>
-                <el-button size="small" @click="fitView">适应视图</el-button>
-                <el-button size="small" @click="savePositions">保存位置</el-button>
-              </el-button-group>
+              <div class="graph-actions">
+                <span class="graph-tip">Shift+拖拽连线 | 双击编辑 | 右键删除</span>
+                <el-button-group>
+                  <el-button size="small" @click="handleFitView">适应视图</el-button>
+                  <el-button size="small" @click="savePositions">保存位置</el-button>
+                </el-button-group>
+              </div>
             </div>
           </template>
-          <div ref="graphRef" class="graph-container"></div>
+          <div class="graph-container">
+            <DagCanvas
+              ref="dagCanvasRef"
+              :nodes="dagNodes"
+              :edges="dagEdges"
+              @node-click="onNodeClick"
+              @node-move="onNodeMove"
+              @edge-create="onEdgeCreate"
+              @edge-delete="onEdgeDelete"
+              @node-delete="onNodeDelete"
+            />
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -72,16 +86,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Graph } from '@antv/g6'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { getContainer } from '@/api/container'
-import { getTasks, putTask } from '@/api/task'
-import { getRelations } from '@/api/relation'
+import { getTasks, putTask, deleteTask } from '@/api/task'
+import { getRelations, addRelation, deleteRelation } from '@/api/relation'
 import { putNodes } from '@/api/node'
-import type { Container, Task, RelationResponse, Node } from '@/types/model'
+import type { Container, Task, RelationResponse, Link } from '@/types/model'
+import DagCanvas from '@/components/DagCanvas/index.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -92,8 +106,7 @@ const tasks = ref<Task[]>([])
 const relations = ref<RelationResponse | null>(null)
 const selectedTask = ref<Task | null>(null)
 
-const graphRef = ref<HTMLElement>()
-let graph: Graph | null = null
+const dagCanvasRef = ref<InstanceType<typeof DagCanvas>>()
 
 const showTaskDialog = ref(false)
 const isEditTask = ref(false)
@@ -113,93 +126,44 @@ const taskRules: FormRules = {
   command: [{ required: true, message: '请输入命令', trigger: 'blur' }]
 }
 
-function getNodeColor(status: number): string {
-  const map: Record<number, string> = { 1: '#909399', 2: '#409EFF', 3: '#67C23A', 4: '#F56C6C' }
-  return map[status] || '#909399'
-}
-
-function initGraph() {
-  if (!graphRef.value) return
-
-  const width = graphRef.value.clientWidth
-  const height = graphRef.value.clientHeight || 500
-
-  graph = new Graph({
-    container: graphRef.value,
-    width,
-    height,
-    data: { nodes: [], edges: [] },
-    node: {
-      style: {
-        size: 60,
-        fill: '#fff',
-        stroke: '#5B8FF9',
-        lineWidth: 2
-      }
-    },
-    edge: {
-      style: {
-        stroke: '#A3B1BF',
-        lineWidth: 2,
-        endArrow: true
-      }
-    },
-    behaviors: ['drag-canvas', 'zoom-canvas', 'drag-node']
+// 转换为 DAG Canvas 需要的节点格式
+const dagNodes = computed(() => {
+  // 优先使用 relations 中的节点位置
+  const nodeMap = new Map<number, { x: number; y: number }>()
+  relations.value?.nodes?.forEach(n => {
+    nodeMap.set(n.id, { x: n.x, y: n.y })
   })
 
-  updateGraph()
-  window.addEventListener('resize', handleResize)
-}
-
-function updateGraph() {
-  if (!graph || !relations.value) return
-
-  const nodes = relations.value.nodes.map((node: Node) => ({
-    id: node.id.toString(),
-    label: node.name,
-    x: node.x,
-    y: node.y,
-    style: { fill: getNodeColor(node.status) }
-  }))
-
-  const edges = relations.value.links.map((link: any) => ({
-    source: link.tid.toString(),
-    target: link.next_tid.toString()
-  }))
-
-  graph.setData({ nodes, edges })
-  graph.render()
-}
-
-function handleResize() {
-  if (!graph || !graphRef.value) return
-  graph.setSize(graphRef.value.clientWidth, graphRef.value.clientHeight || 500)
-}
-
-function fitView() {
-  graph?.fitView()
-}
-
-async function fetchData() {
-  try {
-    const [containerRes, tasksRes, relationsRes] = await Promise.all([
-      getContainer(cid),
-      getTasks({ cid }),
-      getRelations({ cid })
-    ])
-
-    container.value = containerRes.data
-    tasks.value = (tasksRes.data as any)?.items || []
-    relations.value = relationsRes.data
-
-    if (graph) {
-      updateGraph()
-    } else {
-      initGraph()
+  return tasks.value.map((task, index) => {
+    const pos = nodeMap.get(task.tid)
+    return {
+      id: task.tid,
+      name: task.name,
+      status: task.status,
+      x: pos?.x && pos.x > 0 ? pos.x : 100 + index * 150,
+      y: pos?.y && pos.y > 0 ? pos.y : 250
     }
-  } catch (error) {
-    console.error(error)
-  }
+  })
+})
+
+// 转换为 DAG Canvas 需要的边格式
+const dagEdges = computed(() => {
+  return (relations.value?.links || []).map((link: Link) => ({
+    id: link.id,
+    source: link.tid,
+    target: link.next_tid
+  }))
+})
+
+function showAddTaskDialog() {
+  isEditTask.value = false
+  editingTaskId.value = undefined
+  taskForm.name = ''
+  taskForm.command = ''
+  taskForm.directory = ''
+  taskForm.timeout = 30
+  taskForm.log_enable = true
+  showTaskDialog.value = true
 }
 
 function selectTask(task: Task) {
@@ -212,6 +176,98 @@ function selectTask(task: Task) {
   taskForm.timeout = task.timeout
   taskForm.log_enable = task.log_enable
   showTaskDialog.value = true
+}
+
+function onNodeClick(node: { id: number }) {
+  const task = tasks.value.find(t => t.tid === node.id)
+  if (task) {
+    selectTask(task)
+  }
+}
+
+function onNodeMove(node: { id: number; x: number; y: number }) {
+  // 更新本地节点位置
+  const dagNode = dagNodes.value.find(n => n.id === node.id)
+  if (dagNode) {
+    dagNode.x = node.x
+    dagNode.y = node.y
+  }
+}
+
+async function onEdgeCreate(sourceId: number, targetId: number) {
+  if (sourceId === targetId) {
+    ElMessage.warning('不能连接自己')
+    return
+  }
+
+  // 检查是否已存在连线
+  const exists = dagEdges.value.some(e => e.source === sourceId && e.target === targetId)
+  if (exists) {
+    ElMessage.warning('连线已存在')
+    return
+  }
+
+  try {
+    await addRelation({
+      cid,
+      tid: sourceId,
+      next_tid: targetId
+    })
+    ElMessage.success('连线创建成功')
+    fetchData()
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+async function onEdgeDelete(edgeId: number) {
+  try {
+    await ElMessageBox.confirm('确定删除这条连线吗？', '确认删除', {
+      type: 'warning'
+    })
+    await deleteRelation(edgeId)
+    ElMessage.success('连线删除成功')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+    }
+  }
+}
+
+async function onNodeDelete(nodeId: number) {
+  try {
+    await ElMessageBox.confirm('确定删除这个任务吗？相关的连线也会被删除。', '确认删除', {
+      type: 'warning'
+    })
+    await deleteTask(nodeId)
+    ElMessage.success('任务删除成功')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+    }
+  }
+}
+
+function handleFitView() {
+  dagCanvasRef.value?.fitView()
+}
+
+async function fetchData() {
+  try {
+    const [containerRes, tasksRes, relationsRes] = await Promise.all([
+      getContainer(cid),
+      getTasks({ cid }),
+      getRelations({ cid })
+    ])
+
+    container.value = (containerRes as any).data
+    tasks.value = (tasksRes as any).data?.items || []
+    relations.value = (relationsRes as any).data
+  } catch (error) {
+    console.error(error)
+  }
 }
 
 async function handleSubmitTask() {
@@ -229,14 +285,12 @@ async function handleSubmitTask() {
 }
 
 async function savePositions() {
-  if (!graph || !relations.value) return
-
-  const nodeData = relations.value.nodes.map((node: any) => ({
+  const nodeData = dagNodes.value.map(node => ({
     id: node.id,
     name: node.name,
     status: node.status,
-    x: node.x,
-    y: node.y
+    x: Math.round(node.x),
+    y: Math.round(node.y)
   }))
 
   try {
@@ -250,17 +304,21 @@ async function savePositions() {
 onMounted(() => {
   fetchData()
 })
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-  graph?.destroy()
-})
 </script>
 
 <style lang="scss" scoped>
 .container-config {
   .page-title { font-size: 18px; font-weight: bold; }
   .card-header { display: flex; justify-content: space-between; align-items: center; }
+  .graph-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    .graph-tip {
+      font-size: 12px;
+      color: #909399;
+    }
+  }
   .task-list { max-height: 500px; overflow-y: auto; }
   .task-item {
     padding: 10px;

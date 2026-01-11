@@ -24,8 +24,8 @@ export const useUserStore = defineStore('user', () => {
   async function handleLogin(userNameVal: string, userPwd: string) {
     try {
       const res = await login({ user_name: userNameVal, user_pwd: userPwd })
-      if (res.data?.token) {
-        setToken(res.data.token)
+      if (res.data && typeof res.data === 'string') {
+        setToken(res.data)
         setUserName(userNameVal)
         return true
       }
