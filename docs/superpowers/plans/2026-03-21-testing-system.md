@@ -174,6 +174,22 @@ func TestPublish_IDAndTS(t *testing.T) {
 		t.Fatal("timeout waiting for event")
 	}
 }
+
+func TestBackpressure_RemoveOnFull(t *testing.T) {
+	hub := NewStreamHub(1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ch := hub.Subscribe(ctx)
+
+	// 发送 2 条消息使缓冲区满
+	hub.Publish(StreamEvent{Msg: "msg1"})
+	hub.Publish(StreamEvent{Msg: "msg2"}) // 这条会导致慢客户端被断开
+
+	// 验证 channel 已被关闭（被移除）
+	_, ok := <-ch
+	assert.False(t, ok, "channel should be closed")
+}
 ```
 
 - [ ] **Step 2: 运行 StreamHub 测试验证**
@@ -182,7 +198,7 @@ func TestPublish_IDAndTS(t *testing.T) {
 go test -v -run "TestStreamHub" ./internal/service/
 ```
 
-Expected: PASS (7 tests)
+Expected: PASS (9 tests)
 
 - [ ] **Step 3: 提交**
 
@@ -208,6 +224,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -215,6 +232,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"clock/internal/domain"
+	"clock/internal/repository"
 )
 
 // mockTaskRepo implements TaskRepository for testing
@@ -249,12 +267,12 @@ func (m *mockTaskRepo) Save(task *domain.Task) error {
 	return nil
 }
 
-func (m *mockTaskRepo) List(query interface{}) ([]*domain.Task, error) {
-	return nil, nil
+func (m *mockTaskRepo) List(query *repository.TaskQuery) ([]*domain.Task, error) {
+	return []*domain.Task{}, nil
 }
 
 func (m *mockTaskRepo) GetByCID(cid int) ([]*domain.Task, error) {
-	return nil, nil
+	return []*domain.Task{}, nil
 }
 
 func (m *mockTaskRepo) Delete(tid int) error {
@@ -299,8 +317,8 @@ type mockTaskLogRepo struct {
 	logs []*domain.TaskLog
 }
 
-func (m *mockTaskLogRepo) List(query interface{}) ([]*domain.TaskLog, error) {
-	return nil, nil
+func (m *mockTaskLogRepo) List(query *repository.LogQuery) ([]*domain.TaskLog, error) {
+	return []*domain.TaskLog{}, nil
 }
 
 func (m *mockTaskLogRepo) Save(log *domain.TaskLog) error {
@@ -312,7 +330,7 @@ func (m *mockTaskLogRepo) DeleteByID(lid string) error {
 	return nil
 }
 
-func (m *mockTaskLogRepo) DeleteByTimeRange(query interface{}) error {
+func (m *mockTaskLogRepo) DeleteByTimeRange(query *repository.LogQuery) error {
 	return nil
 }
 
@@ -340,12 +358,12 @@ func (m *mockContainerRepo) Save(c *domain.Container) error {
 	return nil
 }
 
-func (m *mockContainerRepo) List(query interface{}) ([]*domain.Container, error) {
-	return nil, nil
+func (m *mockContainerRepo) List(query *repository.ContainerQuery) ([]*domain.Container, error) {
+	return []*domain.Container{}, nil
 }
 
 func (m *mockContainerRepo) FindAll() ([]*domain.Container, error) {
-	return nil, nil
+	return []*domain.Container{}, nil
 }
 
 func (m *mockContainerRepo) Delete(cid int) error {
@@ -358,7 +376,7 @@ func newTestTask(tid, cid int, command string) *domain.Task {
 		Tid:       tid,
 		Cid:       cid,
 		Command:   command,
-		Name:      "test-task-" + string(rune(tid+'0')),
+		Name:      fmt.Sprintf("test-task-%d", tid),
 		Status:    domain.StatusPending,
 		Timeout:   30,
 		LogEnable: false,
@@ -454,6 +472,25 @@ func TestRunTask_EmptyCommand(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, domain.StatusFailure, task.Status)
 	assert.Contains(t, err.Error(), "empty")
+}
+
+func TestRunTask_Directory(t *testing.T) {
+	taskRepo := newMockTaskRepo()
+	relRepo := &mockRelationRepo{}
+	logRepo := &mockTaskLogRepo{}
+	containerRepo := &mockContainerRepo{}
+	hub := NewStreamHub(100)
+
+	executor := NewExecutor(taskRepo, relRepo, logRepo, containerRepo, hub)
+
+	task := newTestTask(1, 1, "pwd")
+	task.Directory = "/tmp"
+	taskRepo.tasks[1] = task
+
+	err := executor.RunTask(task)
+
+	assert.NoError(t, err)
+	assert.Equal(t, domain.StatusSuccess, task.Status)
 }
 ```
 
@@ -569,6 +606,36 @@ func TestCancelRun(t *testing.T) {
 	err = executor.CancelRun("nonexistent")
 	assert.NoError(t, err)
 }
+
+func TestCancelRun_CancelledTasks(t *testing.T) {
+	taskRepo := newMockTaskRepo()
+	relRepo := &mockRelationRepo{}
+	logRepo := &mockTaskLogRepo{}
+	containerRepo := &mockContainerRepo{}
+	hub := NewStreamHub(100)
+
+	executor := NewExecutor(taskRepo, relRepo, logRepo, containerRepo, hub)
+
+	// 创建一个长时间运行的任务
+	task := newTestTask(1, 1, "sleep 30")
+	taskRepo.tasks[1] = task
+
+	// 在 goroutine 中启动任务
+	go func() {
+		executor.RunTask(task)
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+
+	// 取消该 run
+	executor.CancelRun("test-run-cancel")
+
+	// 等待任务被取消
+	time.Sleep(100 * time.Millisecond)
+
+	// 验证任务被取消
+	assert.Equal(t, domain.StatusCancelled, task.Status)
+}
 ```
 
 - [ ] **Step 2: 运行测试验证**
@@ -673,6 +740,41 @@ func TestIsContainerRunning(t *testing.T) {
 	executor.unregisterRunningContainer(1)
 	assert.False(t, executor.IsContainerRunning(1))
 }
+
+func TestRunStageTasksWithRunID_Concurrent(t *testing.T) {
+	taskRepo := newMockTaskRepo()
+	relRepo := &mockRelationRepo{
+		relations: []*domain.Relation{
+			// Task1 和 Task2 无依赖，可以并发执行
+			// Task3 依赖 Task1 和 Task2
+			{Rid: 1, Tid: 1, NextTid: 3},
+			{Rid: 2, Tid: 2, NextTid: 3},
+		},
+	}
+	logRepo := &mockTaskLogRepo{}
+	containerRepo := &mockContainerRepo{}
+	hub := NewStreamHub(100)
+
+	executor := NewExecutor(taskRepo, relRepo, logRepo, containerRepo, hub)
+
+	task1 := newTestTask(1, 1, "echo first")
+	task2 := newTestTask(2, 1, "echo second")
+	task3 := newTestTask(3, 1, "echo third")
+	taskRepo.tasks[1] = task1
+	taskRepo.tasks[2] = task2
+	taskRepo.tasks[3] = task3
+
+	executor.runStageTasksWithRunID(
+		[]*domain.Task{task1, task2, task3},
+		relRepo.relations,
+		"test-concurrent",
+	)
+
+	// 所有任务都应该成功
+	assert.Equal(t, domain.StatusSuccess, task1.Status)
+	assert.Equal(t, domain.StatusSuccess, task2.Status)
+	assert.Equal(t, domain.StatusSuccess, task3.Status)
+}
 ```
 
 - [ ] **Step 2: 运行测试验证**
@@ -719,8 +821,8 @@ go vet ./...
 ## 任务完成检查清单
 
 - [ ] testify 依赖已安装
-- [ ] StreamHub 测试 (7 tests) 全部通过
-- [ ] Executor 测试 (~15 tests) 全部通过
+- [ ] StreamHub 测试 (9 tests) 全部通过
+- [ ] Executor 测试 (~18 tests) 全部通过
 - [ ] `go test ./...` 全部通过
 - [ ] `go vet ./...` 无警告
 - [ ] 所有更改已提交
