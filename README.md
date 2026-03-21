@@ -1,5 +1,5 @@
 <div align=center>
-<img src="docs/images/home.png" width="200" />
+<img src="docs/images/logo.png" width="200" />
 </div>
 
 # Clock - 任务调度平台
@@ -15,14 +15,14 @@
 - **实时状态监控** - SSE (Server-Sent Events) 实时推送任务执行状态
 - **日志管理** - 实时日志流式查看，历史日志持久化查询
 - **系统监控** - 内存、CPU、系统负载实时监控
-- **多主题支持** - 亮色、暗色、荧光多种主题切换
+- **多主题支持** - 清新明亮、柔和暗色、绿色荧光、Linear 风格多种主题切换
 - **JWT 认证** - 安全的身份验证机制
 - **单文件部署** - 前后端打包成一个二进制文件
 
 ## 技术栈
 
 ### 后端
-- Go 1.24+
+- Go 1.21+
 - [Echo](https://echo.labstack.com) - 高性能 Web 框架
 - [GORM](https://gorm.io) - ORM 数据库访问
 - [robfig/cron](https://github.com/robfig/cron) - 定时调度器
@@ -47,45 +47,44 @@ clock/
 │   └── config.toml           # 配置文件
 ├── internal/
 │   ├── config/               # 配置解析
-│   ├── domain/               # 领域模型
-│   │   ├── container.go      # 容器模型
-│   │   ├── task.go           # 任务模型
-│   │   ├── relation.go       # DAG 关系模型
-│   │   ├── tasklog.go        # 日志模型
-│   │   └── message.go        # 消息模型
-│   ├── handler/              # HTTP 处理器
+│   ├── domain/              # 领域模型
+│   │   ├── container.go     # 容器模型
+│   │   ├── task.go          # 任务模型
+│   │   ├── relation.go      # DAG 关系模型
+│   │   ├── tasklog.go       # 日志模型
+│   │   └── message.go       # 消息模型
+│   ├── handler/             # HTTP 处理器
 │   │   ├── task_handler.go
 │   │   ├── container_handler.go
 │   │   ├── log_handler.go
 │   │   ├── relation_handler.go
 │   │   ├── auth_handler.go
 │   │   └── message_handler.go
-│   ├── middleware/           # 中间件
-│   │   ├── jwt.go            # JWT 认证
-│   │   └── logger.go         # 请求日志
-│   ├── repository/           # 数据访问层
+│   ├── middleware/          # 中间件
+│   │   ├── jwt.go          # JWT 认证
+│   │   └── logger.go       # 请求日志
+│   ├── repository/          # 数据访问层
 │   │   ├── container_repo.go
 │   │   ├── task_repo.go
 │   │   ├── relation_repo.go
 │   │   └── tasklog_repo.go
-│   ├── router/               # 路由注册
-│   ├── service/              # 业务逻辑
+│   ├── router/             # 路由注册
+│   ├── service/            # 业务逻辑
 │   │   ├── scheduler_service.go  # 调度服务
 │   │   ├── executor.go           # 执行器
 │   │   ├── stream_hub.go         # SSE 广播
 │   │   └── message_service.go
-│   └── runner/               # 任务执行器
-├── web/
-│   └── dist/                 # 前端构建产物 (嵌入式)
-├── server/webapp/            # 前端源码
-│   ├── src/
-│   │   ├── views/            # 页面组件
-│   │   ├── api/              # API 客户端
-│   │   ├── stores/           # Pinia 状态
-│   │   └── router/           # 前端路由
-│   └── vite.config.ts
+│   └── errors/             # 错误定义
+├── pkg/util/               # 工具函数
+├── server/webapp/          # 前端源码
+│   └── src/
+│       ├── views/          # 页面组件
+│       ├── api/            # API 客户端
+│       ├── stores/         # Pinia 状态
+│       ├── types/          # 类型定义
+│       └── styles/         # 样式文件
 └── docs/
-    └── images/               # 文档截图
+    └── images/            # 文档截图
 ```
 
 ## 快速开始
@@ -125,55 +124,43 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o clock cmd/clock/main.go
 默认用户名：`admin`
 默认密码：`admin`
 
-## 使用流程
+## 界面预览
 
-### 1. 登录系统
+### 首页仪表盘
 
-![登录页面](docs/images/login.png)
+![首页](docs/images/home.png)
 
-### 2. 创建容器
+实时监控界面，展示系统运行状态、任务统计、资源使用情况。
 
-容器是任务组，用于管理一组相关任务的调度。
+### 登录页面
+
+![登录](docs/images/login.png)
+
+支持用户名密码登录，安全可靠。
+
+### 容器管理
 
 ![容器管理](docs/images/container-list.png)
 
-- 点击「新增容器」
-- 填写容器名称和 cron 表达式
-- 配置阻塞运行选项（启用后，上次调度未完成则跳过本次）
-- 启用容器
+管理任务容器和定时调度，配置 cron 表达式、阻塞运行模式。
 
-### 3. 添加任务
-
-任务是具体的 bash 命令执行单元。
+### 任务管理
 
 ![任务管理](docs/images/task-list.png)
 
-- 选择容器
-- 点击「新增任务」
-- 填写任务名称和执行命令
-- 设置超时时间和日志选项
+管理具体任务，配置执行命令、超时时间、日志选项。
 
-### 4. 配置 DAG 依赖
-
-通过可视化界面配置任务之间的依赖关系，确保任务按正确顺序执行。
-![DAG 依赖](docs/images/config-dag.png)
-
-### 5. 实时监控
+### 实时状态
 
 ![实时状态](docs/images/realtime-status.png)
 
-- 查看任务实时执行状态
-- SSE 推送日志输出
-- 自动滚动和手动控制
-- 支持取消单个任务或整个调度批次
+SSE 实时监控任务执行状态，支持取消单个任务或整个批次。
 
-### 6. 日志查询
+### 日志中心
 
 ![日志中心](docs/images/log-center.png)
 
-- 按容器、任务筛选
-- 时间范围查询
-- 查看历史执行记录
+查询历史执行日志，按容器、任务、时间范围筛选。
 
 ## 核心架构
 
@@ -188,7 +175,7 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o clock cmd/clock/main.go
 ### 任务取消机制
 
 支持两种级别的取消操作：
-- **取消单个任务** - 终止指定任务的执行进程，后续依赖任务不再执行
+- **取消单个任务** - 终止指定任务的执行进程
 - **取消整个批次** - 终止该 RunID 下所有正在执行的任务，并阻止后续任务启动
 
 ### 阻塞运行模式
@@ -222,19 +209,28 @@ Token 支持三种传递方式：
 
 ```toml
 [server]
-host = "0.0.0.0"
-port = 9528
+host = "0.0.0.0:9528"
 
 [storage]
-type = "sqlite"  # sqlite, mysql, postgresql
-dsn = "clock.db"
+backend = "sqlite3"  # 支持: sqlite3, mysql, postgres
+conn = "clock.db"
+
+[log]
+level = "info"        # 日志级别
+filepath = "clock.log" # 日志文件路径
+max_size = 100       # 单个日志文件最大大小（MB）
+max_backups = 5      # 保留的旧日志文件数量
+max_age = 7           # 日志文件保留天数
+compress = true        # 是否压缩旧日志文件
+local_time = true     # 是否使用本地时间
 
 [auth]
-secret = "your-secret-key"
-expire = 24  # 小时
+user = "admin"        # 默认用户名
+password = "admin"    # 默认密码
+jwt_secret = "helloClock$"  # JWT 密钥
 
 [message]
-expire = 24  # 小时
+size = 1000           # SSE 缓冲区大小
 ```
 
 ## 数据库支持

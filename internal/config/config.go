@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+
 	"github.com/BurntSushi/toml"
 
 	"clock/internal/logger"
@@ -22,8 +24,11 @@ type ServerConfig struct {
 
 // StorageConfig 存储配置
 type StorageConfig struct {
-	Backend string `toml:"backend"` // sqlite3, mysql, postgres
-	Conn    string `toml:"conn"`
+	Backend         string `toml:"backend"` // sqlite3, mysql, postgres
+	Conn            string `toml:"conn"`
+	MaxOpenConns    int    `toml:"max_open_conns"`
+	MaxIdleConns    int    `toml:"max_idle_conns"`
+	ConnMaxLifetime int    `toml:"conn_max_lifetime"`
 }
 
 // LogConfig 日志配置
@@ -59,6 +64,17 @@ func Load(path string) (*Config, error) {
 	// 设置默认值
 	if cfg.Message.Size <= 0 {
 		cfg.Message.Size = 1000
+	}
+
+	// 环境变量覆盖
+	if jwtSecret := os.Getenv("CLOCK_JWT_SECRET"); jwtSecret != "" {
+		cfg.Auth.JWTSecret = jwtSecret
+	}
+	if user := os.Getenv("CLOCK_USER"); user != "" {
+		cfg.Auth.User = user
+	}
+	if password := os.Getenv("CLOCK_PASSWORD"); password != "" {
+		cfg.Auth.Password = password
 	}
 
 	// 初始化日志

@@ -146,6 +146,54 @@ $themes: (
     --input-bg: #0a0f14,
     --input-border: rgba(0, 255, 136, 0.2),
     --input-placeholder: #5c6b7f
+  ),
+
+  'premium': (
+    // 背景色 - Linear/Vercel 风格深色
+    --bg-primary: #0c0c0e,
+    --bg-secondary: #111113,
+    --bg-tertiary: #18181b,
+    --bg-card: rgba(20, 20, 23, 0.8),
+    --bg-glass: rgba(20, 20, 23, 0.6),
+
+    // 文字色
+    --text-primary: #fafafa,
+    --text-regular: #a1a1aa,
+    --text-secondary: #71717a,
+    --text-muted: #52525b,
+
+    // 边框 - 精致细线
+    --border-color: rgba(255, 255, 255, 0.06),
+    --border-color-light: rgba(255, 255, 255, 0.08),
+    --border-color-lighter: rgba(255, 255, 255, 0.04),
+
+    // 主色 - 高级紫蓝渐变
+    --primary-color: #8b5cf6,
+    --primary-dim: #7c3aed,
+    --primary-glow: rgba(139, 92, 246, 0.25),
+    --primary-glow-strong: rgba(139, 92, 246, 0.4),
+
+    // 辅助色
+    --success-color: #22c55e,
+    --warning-color: #f59e0b,
+    --danger-color: #ef4444,
+    --info-color: #3b82f6,
+
+    // 阴影 - 精致柔和
+    --shadow-color: rgba(0, 0, 0, 0.5),
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3),
+    --shadow-glow: 0 8px 32px rgba(139, 92, 246, 0.15),
+
+    // 表格
+    --table-bg: #111113,
+    --table-header-bg: #18181b,
+    --table-row-hover: rgba(139, 92, 246, 0.08),
+    --table-stripe: rgba(255, 255, 255, 0.02),
+
+    // 输入框
+    --input-bg: #111113,
+    --input-border: rgba(255, 255, 255, 0.08),
+    --input-placeholder: #52525b
   )
 );
 
@@ -178,13 +226,13 @@ $themes: (
 
   // 圆角
   --border-radius-base: 6px;
-  --border-radius-lg: 10px;
-  --border-radius-xl: 14px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
 
   // 过渡
   --transition-fast: 0.15s ease;
-  --transition-base: 0.3s ease;
-  --transition-slow: 0.5s ease;
+  --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 // 主题过渡动画

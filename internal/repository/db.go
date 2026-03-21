@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"clock/internal/config"
 	"clock/internal/domain"
 
@@ -30,6 +32,22 @@ func NewDB(cfg *config.StorageConfig) (*gorm.DB, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	// 配置连接池
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg.MaxOpenConns > 0 {
+		sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
+	}
+	if cfg.MaxIdleConns > 0 {
+		sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
+	}
+	if cfg.ConnMaxLifetime > 0 {
+		sqlDB.SetConnMaxLifetime(time.Duration(cfg.ConnMaxLifetime) * time.Second)
 	}
 
 	// 自动迁移

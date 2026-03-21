@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +20,10 @@ import (
 	"clock/pkg/util"
 )
 
+var (
+	dangerousCharsRegex = regexp.MustCompile("[;&|$\x60\\\\<>]")
+)
+
 // runningTask 运行中的任务信息
 type runningTask struct {
 	cmd      *exec.Cmd
@@ -28,6 +33,21 @@ type runningTask struct {
 	cid      int
 	taskName string
 	startAt  time.Time
+}
+
+// validateCommand validates command to prevent command injection
+func validateCommand(cmd string) error {
+	if cmd == "" {
+		return errors.New("command cannot be empty")
+	}
+	parts := strings.Fields(cmd)
+	if len(parts) == 0 {
+		return errors.New("command cannot be empty")
+	}
+	if dangerousCharsRegex.MatchString(cmd) {
+		return errors.New("command contains potentially dangerous characters")
+	}
+	return nil
 }
 
 // RunningTaskInfo 运行中任务信息（用于返回给前端）
@@ -86,15 +106,13 @@ func (e *Executor) RunTask(task *domain.Task) error {
 
 // RunTaskWithRunID 执行单个任务，带 runID 用于日志追踪
 func (e *Executor) RunTaskWithRunID(task *domain.Task, runID string) error {
-	// 检查该 runID 是否已被取消
 	if runID != "" {
-		e.cancelledRunsMu.RLock()
-		_, cancelled := e.cancelledRuns[runID]
-		e.cancelledRunsMu.RUnlock()
-		if cancelled {
+		if e.isRunCancelled(runID) {
 			task.Status = domain.StatusCancelled
 			task.UpdateAt = time.Now().Unix()
-			_ = e.taskRepo.Save(task)
+			if err := e.taskRepo.Save(task); err != nil {
+				logger.Errorf("failed to save task status: %v", err)
+			}
 			e.hub.Publish(StreamEvent{
 				Kind:     "task_end",
 				RunID:    runID,
@@ -128,7 +146,9 @@ func (e *Executor) RunTaskWithRunID(task *domain.Task, runID string) error {
 
 		task.UpdateAt = time.Now().Unix()
 		logger.Debugf("[%d] finished task [%s]", task.Tid, task.Name)
-		_ = e.taskRepo.Save(task)
+		if err := e.taskRepo.Save(task); err != nil {
+			logger.Errorf("failed to save task: %v", err)
+		}
 		e.saveLog(task, stdOutBuf, stdErrBuf)
 
 		e.hub.Publish(StreamEvent{
@@ -150,8 +170,17 @@ func (e *Executor) RunTaskWithRunID(task *domain.Task, runID string) error {
 		return errors.New(errMsg)
 	}
 
+	if err := validateCommand(task.Command); err != nil {
+		task.Status = domain.StatusFailure
+		errMsg = err.Error()
+		cancel()
+		return err
+	}
+
 	logger.Debugf("[%d] running task [%s]", task.Tid, task.Name)
-	_ = e.taskRepo.Save(task)
+	if err := e.taskRepo.Save(task); err != nil {
+		logger.Errorf("failed to save task: %v", err)
+	}
 
 	e.hub.Publish(StreamEvent{
 		Kind:     "task_start",
@@ -177,9 +206,15 @@ func (e *Executor) RunTaskWithRunID(task *domain.Task, runID string) error {
 	if err != nil {
 		task.Status = domain.StatusFailure
 		errMsg = err.Error()
+		stdoutPipe.Close()
 		cancel()
 		return err
 	}
+
+	defer func() {
+		stdoutPipe.Close()
+		stderrPipe.Close()
+	}()
 
 	if task.Directory != "" {
 		cmd.Dir = task.Directory
@@ -189,6 +224,8 @@ func (e *Executor) RunTaskWithRunID(task *domain.Task, runID string) error {
 		task.Status = domain.StatusFailure
 		errMsg = err.Error()
 		cancel()
+		stdoutPipe.Close()
+		stderrPipe.Close()
 		return err
 	}
 
@@ -261,14 +298,20 @@ func (e *Executor) RunTaskWithRunID(task *domain.Task, runID string) error {
 			// (CommandContext 在 ctx 取消时会 kill 进程)
 		case <-time.After(time.Duration(task.Timeout) * time.Second):
 			timedOut = true
-			_ = cmd.Process.Kill()
+			if cmd.Process != nil {
+				if err := cmd.Process.Kill(); err != nil {
+					logger.Errorf("failed to kill process: %v", err)
+				}
+			}
 			waitErr = <-done
 		case <-ctx.Done():
 			// 被取消
 			cancelled = true
 			// CommandContext 已经会 kill 进程，但为了确保，再次调用
 			if cmd.Process != nil {
-				_ = cmd.Process.Kill()
+				if err := cmd.Process.Kill(); err != nil {
+					logger.Errorf("failed to kill process: %v", err)
+				}
 			}
 			waitErr = <-done
 		}
@@ -309,6 +352,14 @@ func (e *Executor) RunTaskWithRunID(task *domain.Task, runID string) error {
 
 	task.Status = domain.StatusSuccess
 	return nil
+}
+
+// isRunCancelled checks if a runID has been cancelled (thread-safe)
+func (e *Executor) isRunCancelled(runID string) bool {
+	e.cancelledRunsMu.RLock()
+	defer e.cancelledRunsMu.RUnlock()
+	_, cancelled := e.cancelledRuns[runID]
+	return cancelled
 }
 
 // CancelTask 取消单个任务
@@ -406,12 +457,8 @@ func (e *Executor) unregisterRunningContainer(cid int) {
 
 // RunTaskByIDWithRunID 根据ID执行任务，带 runID
 func (e *Executor) RunTaskByIDWithRunID(tid int, runID string) error {
-	// 检查该 runID 是否已被取消
 	if runID != "" {
-		e.cancelledRunsMu.RLock()
-		_, cancelled := e.cancelledRuns[runID]
-		e.cancelledRunsMu.RUnlock()
-		if cancelled {
+		if e.isRunCancelled(runID) {
 			return errors.New("run was cancelled")
 		}
 	}
@@ -445,7 +492,9 @@ func (e *Executor) RunTaskByIDWithRunID(tid int, runID string) error {
 			// 如果有前置任务失败、等待中或已取消，当前任务设为等待
 			if preTask.Status == domain.StatusFailure || preTask.Status == domain.StatusPending || preTask.Status == domain.StatusCancelled {
 				task.Status = domain.StatusPending
-				_ = e.taskRepo.Save(task)
+				if err := e.taskRepo.Save(task); err != nil {
+					logger.Errorf("failed to save task: %v", err)
+				}
 				return nil
 			}
 		}
@@ -479,13 +528,17 @@ func (e *Executor) RunContainer(container *domain.Container, tasks []*domain.Tas
 	defer func() {
 		container.Status = domain.StatusPending
 		container.UpdateAt = time.Now().Unix()
-		_ = e.containerRepo.Save(container)
+		if err := e.containerRepo.Save(container); err != nil {
+			logger.Errorf("failed to save container: %v", err)
+		}
 	}()
 
 	// 重置所有任务状态为 Pending，确保干净的执行环境
 	for _, task := range tasks {
 		task.Status = domain.StatusPending
-		_ = e.taskRepo.Save(task)
+		if err := e.taskRepo.Save(task); err != nil {
+			logger.Errorf("failed to save task: %v", err)
+		}
 	}
 
 	e.runStageTasksWithRunID(tasks, relations, runID)
@@ -505,14 +558,9 @@ func (e *Executor) runStageTasksWithRunID(tasks []*domain.Task, relations []*dom
 
 	for {
 		// 检查该 runID 是否已被取消
-		if runID != "" {
-			e.cancelledRunsMu.RLock()
-			_, cancelled := e.cancelledRuns[runID]
-			e.cancelledRunsMu.RUnlock()
-			if cancelled {
-				logger.Infof("[executor] runID %s was cancelled, stopping DAG execution", runID)
-				break
-			}
+		if runID != "" && e.isRunCancelled(runID) {
+			logger.Infof("[executor] runID %s was cancelled, stopping DAG execution", runID)
+			break
 		}
 
 		logger.Debugf("[executor] stage %d", stage)
@@ -572,7 +620,6 @@ func (e *Executor) runStageTasksWithRunID(tasks []*domain.Task, relations []*dom
 
 // saveLog 保存执行日志
 func (e *Executor) saveLog(task *domain.Task, stdOut, stdErr bytes.Buffer) {
-	// 保存日志到数据库
 	if task.LogEnable {
 		lid := genGUID(8)
 		log := &domain.TaskLog{
@@ -583,7 +630,9 @@ func (e *Executor) saveLog(task *domain.Task, stdOut, stdErr bytes.Buffer) {
 			StdErr:   stdErr.String(),
 			UpdateAt: time.Now().Unix(),
 		}
-		_ = e.taskLogRepo.Save(log)
+		if err := e.taskLogRepo.Save(log); err != nil {
+			logger.Errorf("failed to save task log: %v", err)
+		}
 	}
 }
 
