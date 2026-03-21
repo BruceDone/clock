@@ -565,9 +565,9 @@ func TestRunTask_Cancel(t *testing.T) {
 	// 轮询等待任务进入 running 状态
 	for i := 0; i < 50; i++ {
 		time.Sleep(20 * time.Millisecond)
-		e.runningMu.RLock()
-		_, exists := e.running[1]
-		e.runningMu.RUnlock()
+		executor.runningMu.RLock()
+		_, exists := executor.running[1]
+		executor.runningMu.RUnlock()
 		if exists {
 			break
 		}
