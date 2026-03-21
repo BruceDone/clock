@@ -136,3 +136,43 @@ export interface MemoryUsage {
 export interface CpuUsage {
   [key: string]: number
 }
+
+// SSE 流事件
+export interface StreamEvent {
+  id: number
+  ts: number
+  kind: 'task_start' | 'task_end' | 'stdout' | 'stderr' | 'meta' | string
+  runId?: string
+  tid?: number
+  cid?: number
+  taskName?: string
+  status?: string
+  durationMs?: number
+  msg?: string
+}
+
+// 任务日志条目
+export interface TaskLogItem {
+  id: number
+  type: 'stdout' | 'stderr' | 'info'
+  message: string
+}
+
+// 任务块
+export interface TaskBlock {
+  tid: number
+  taskName: string
+  status: 'pending' | 'running' | 'success' | 'error' | 'cancelled'
+  duration?: number
+  logs: TaskLogItem[]
+}
+
+// 日志组
+export interface LogGroup {
+  id: number
+  runId?: string
+  timestamp: string
+  message?: string
+  type?: 'info' | 'success' | 'error' | 'warning'
+  tasks: TaskBlock[]
+}

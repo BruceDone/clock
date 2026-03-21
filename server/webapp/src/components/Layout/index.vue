@@ -1,11 +1,11 @@
 <template>
   <el-container class="layout-container">
-    <el-aside :width="collapsed ? '64px' : '200px'" class="aside">
+    <el-aside :width="collapsed ? '72px' : '240px'" class="aside">
       <div class="logo">
         <div class="logo-icon">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-            <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
         </div>
         <span v-show="!collapsed" class="logo-text">CLOCK</span>
@@ -107,7 +107,7 @@ function handleCommand(command: string) {
 </script>
 
 <style lang="scss" scoped>
-// Layout 组件样式 - 使用 CSS 变量
+// Layout 组件样式 - Premium 风格
 
 .layout-container {
   height: 100vh;
@@ -115,39 +115,58 @@ function handleCommand(command: string) {
 
 .aside {
   background: var(--bg-card);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
   border-right: 1px solid var(--border-color);
-  transition: width var(--transition-base);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 10;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, var(--primary-glow), transparent);
+    opacity: 0.5;
+  }
 
   .logo {
-    height: 64px;
+    height: 72px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    border-bottom: 1px solid var(--border-color-light);
-    padding: 0 16px;
+    gap: 14px;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 20px;
 
     .logo-icon {
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
       color: var(--primary-color);
-      animation: clock-pulse 2s ease-in-out infinite;
+      transition: all 0.3s;
 
       svg {
         width: 100%;
         height: 100%;
+        filter: drop-shadow(0 0 8px var(--primary-glow));
       }
+    }
+
+    &:hover .logo-icon {
+      transform: rotate(15deg);
+      filter: drop-shadow(0 0 12px var(--primary-color));
     }
 
     .logo-text {
       color: var(--text-primary);
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
-      letter-spacing: 3px;
-      background: linear-gradient(135deg, var(--primary-color), var(--info-color));
+      letter-spacing: 4px;
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-dim));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -158,19 +177,35 @@ function handleCommand(command: string) {
     flex: 1;
     border-right: none;
     background: transparent !important;
-    padding: 12px 8px;
+    padding: 16px 12px;
 
     :deep(.el-menu-item) {
-      margin: 4px 0;
-      border-radius: var(--border-radius-base);
+      margin: 6px 0;
+      border-radius: 12px;
       color: var(--text-secondary);
-      transition: all var(--transition-base);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       height: 48px;
       line-height: 48px;
+      padding-left: 16px !important;
+      position: relative;
+      overflow: hidden;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 0;
+        background: var(--primary-color);
+        border-radius: 0 2px 2px 0;
+        transition: height 0.2s;
+      }
 
       &:hover {
         color: var(--primary-color);
-        background: rgba(var(--primary-color), 0.1) !important;
+        background: var(--primary-glow) !important;
 
         .el-icon {
           color: var(--primary-color);
@@ -179,8 +214,12 @@ function handleCommand(command: string) {
 
       &.is-active {
         color: var(--primary-color);
-        background: rgba(var(--primary-color), 0.15) !important;
-        border-left: 3px solid var(--primary-color);
+        background: var(--primary-glow) !important;
+        font-weight: 600;
+
+        &::before {
+          height: 24px;
+        }
 
         .el-icon {
           color: var(--primary-color);
@@ -189,32 +228,40 @@ function handleCommand(command: string) {
 
       .el-icon {
         color: var(--text-muted);
-        transition: color var(--transition-base);
+        transition: color 0.2s;
+        font-size: 18px;
+        margin-right: 12px;
+      }
+
+      span {
+        font-size: 14px;
+        font-weight: 500;
       }
     }
   }
 }
 
-@keyframes clock-pulse {
-  0%, 100% {
-    opacity: 1;
-    filter: drop-shadow(0 0 5px var(--primary-glow));
-  }
-  50% {
-    opacity: 0.8;
-    filter: drop-shadow(0 0 15px var(--primary-color));
-  }
-}
-
 .header {
   background: var(--bg-glass);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  height: 64px;
+  padding: 0 28px;
+  height: 72px;
+  position: relative;
+  z-index: 5;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+  }
 
   .header-left {
     display: flex;
@@ -222,24 +269,24 @@ function handleCommand(command: string) {
     gap: 20px;
 
     .collapse-btn {
-      font-size: 18px;
-      color: var(--primary-color);
+      font-size: 20px;
+      color: var(--text-secondary);
       cursor: pointer;
-      transition: all var(--transition-base);
-      padding: 8px;
-      width: 36px;
-      height: 36px;
+      transition: all 0.2s;
+      padding: 10px;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: var(--border-radius-base);
+      border-radius: 10px;
       background: transparent;
-      border: 1px solid var(--border-color-light);
+      border: 1px solid transparent;
 
       &:hover {
-        background: var(--bg-secondary);
-        border-color: var(--primary-color);
-        box-shadow: 0 0 12px var(--primary-glow);
+        color: var(--primary-color);
+        background: var(--primary-glow);
+        border-color: var(--border-color);
       }
 
       &:active {
@@ -251,6 +298,7 @@ function handleCommand(command: string) {
       .el-breadcrumb__inner {
         color: var(--text-muted);
         font-weight: 500;
+        font-size: 14px;
 
         &.is-link:hover {
           color: var(--primary-color);
@@ -259,6 +307,7 @@ function handleCommand(command: string) {
 
       .el-breadcrumb__item:last-child .el-breadcrumb__inner {
         color: var(--text-primary);
+        font-weight: 600;
       }
     }
   }
@@ -266,53 +315,58 @@ function handleCommand(command: string) {
   .header-right {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 16px;
 
     .system-status {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 12px;
-      background: rgba(var(--success-color), 0.1);
-      border: 1px solid rgba(var(--success-color), 0.3);
-      border-radius: 20px;
+      padding: 8px 14px;
+      background: rgba(34, 197, 94, 0.08);
+      border: 1px solid rgba(34, 197, 94, 0.2);
+      border-radius: 24px;
 
       .status-dot {
         width: 8px;
         height: 8px;
         background: var(--success-color);
         border-radius: 50%;
-        animation: status-pulse 2s ease-in-out infinite;
+        box-shadow: 0 0 8px var(--success-color);
+        animation: status-glow 2s ease-in-out infinite;
       }
 
       .status-text {
-        font-size: 12px;
+        font-size: 13px;
         color: var(--success-color);
-        font-weight: 500;
+        font-weight: 600;
       }
     }
 
     .user-info {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       cursor: pointer;
       color: var(--text-regular);
-      padding: 8px 12px;
-      border-radius: var(--border-radius-base);
-      transition: all var(--transition-base);
+      padding: 10px 14px;
+      border-radius: 12px;
+      transition: all 0.2s;
+      border: 1px solid transparent;
 
       .el-icon {
         color: var(--text-secondary);
+        font-size: 18px;
       }
 
       .user-name {
-        font-weight: 500;
+        font-weight: 600;
+        font-size: 14px;
       }
 
       &:hover {
         color: var(--primary-color);
-        background: rgba(var(--primary-color), 0.1);
+        background: var(--primary-glow);
+        border-color: var(--border-color);
 
         .el-icon {
           color: var(--primary-color);
@@ -322,39 +376,46 @@ function handleCommand(command: string) {
   }
 }
 
-@keyframes status-pulse {
+@keyframes status-glow {
   0%, 100% {
+    box-shadow: 0 0 4px var(--success-color);
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(var(--success-color), 0.4);
   }
   50% {
+    box-shadow: 0 0 12px var(--success-color);
     opacity: 0.7;
-    box-shadow: 0 0 0 6px rgba(var(--success-color), 0);
   }
 }
 
 .main {
-  background: transparent;
-  padding: 24px;
+  background: var(--bg-secondary);
+  padding: 28px;
   overflow-y: auto;
-  height: calc(100vh - 64px);
+  height: calc(100vh - 72px);
 }
 
 :deep(.user-dropdown) {
   background: var(--bg-card) !important;
   border: 1px solid var(--border-color) !important;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
+  border-radius: 12px !important;
+  padding: 8px !important;
+  box-shadow: 0 8px 32px var(--shadow-color);
 
   .el-dropdown-menu__item {
     color: var(--text-regular);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
 
     &:hover {
-      background: rgba(var(--primary-color), 0.1);
+      background: var(--primary-glow);
       color: var(--primary-color);
     }
 
     .el-icon {
       color: var(--text-muted);
+      margin-right: 10px;
     }
   }
 }

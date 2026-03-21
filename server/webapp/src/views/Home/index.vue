@@ -2,79 +2,114 @@
   <div class="home-page">
     <!-- 页面标题 -->
     <div class="page-header">
-      <h1 class="page-title">系统监控</h1>
-      <p class="page-subtitle">实时监控任务调度状态和系统资源</p>
+      <div class="header-content">
+        <div class="header-text">
+          <h1 class="page-title">仪表盘</h1>
+          <p class="page-subtitle">实时监控任务调度状态和系统资源</p>
+        </div>
+        <div class="header-actions">
+          <div class="time-display">
+            <span class="time-label">当前时间</span>
+            <span class="time-value">{{ currentTime }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 统计卡片 -->
-    <el-row :gutter="24" class="stat-cards">
-      <el-col :span="6" v-for="(item, index) in stats" :key="item.title">
-        <div class="stat-card" :class="[`stat-${index}`]" @mouseenter="onCardHover(index)" @mouseleave="onCardLeave(index)">
-          <div class="stat-glow"></div>
-          <div class="stat-icon-wrapper">
-            <div class="stat-icon-bg"></div>
-            <el-icon :size="28" class="stat-icon"><component :is="item.icon" /></el-icon>
+    <div class="stats-section">
+      <div class="stats-grid">
+        <div 
+          v-for="(item, index) in stats" 
+          :key="item.title"
+          class="stat-card"
+          :class="[`stat-${index}`]"
+          @mouseenter="onCardHover(index)" 
+          @mouseleave="onCardLeave(index)"
+        >
+          <div class="stat-bg-gradient"></div>
+          <div class="stat-content">
+            <div class="stat-icon-wrapper">
+              <div class="stat-icon-bg"></div>
+              <el-icon :size="24" class="stat-icon"><component :is="item.icon" /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ animatedCounts[index] }}</div>
+              <div class="stat-label">{{ item.title }}</div>
+            </div>
           </div>
-          <div class="stat-info">
-            <div class="stat-value" :ref="el => statValues[index] = el">{{ animatedCounts[index] }}</div>
-            <div class="stat-label">{{ item.title }}</div>
-          </div>
-          <div class="stat-decoration">
-            <div class="dec-line"></div>
-            <div class="dec-dot"></div>
+          <div class="stat-trend" v-if="index < 2">
+            <el-icon><Top /></el-icon>
+            <span>+12%</span>
           </div>
         </div>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
     <!-- 图表区域 -->
-    <el-row :gutter="24" class="charts-row">
-      <el-col :span="8">
-        <el-card class="chart-card">
-          <template #header>
-            <div class="chart-header">
-              <div class="chart-title">
+    <div class="charts-section">
+      <div class="charts-grid">
+        <!-- 内存使用 -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">
+              <div class="chart-icon">
                 <el-icon><PieChart /></el-icon>
-                <span>内存使用</span>
               </div>
-              <div class="chart-badge">实时</div>
+              <div class="chart-info">
+                <span class="chart-name">内存使用</span>
+                <span class="chart-desc">实时内存占用</span>
+              </div>
             </div>
-          </template>
+            <div class="chart-badge">
+              <span class="pulse-dot"></span>
+              实时
+            </div>
+          </div>
           <div ref="memChartRef" class="chart-container"></div>
-        </el-card>
-      </el-col>
-      <el-col :span="16">
-        <el-card class="chart-card">
-          <template #header>
-            <div class="chart-header">
-              <div class="chart-title">
-                <el-icon><TrendCharts /></el-icon>
-                <span>系统负载</span>
-              </div>
-              <div class="chart-badge">实时</div>
-            </div>
-          </template>
-          <div ref="loadChartRef" class="chart-container"></div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </div>
 
-    <el-row :gutter="24" class="charts-row">
-      <el-col :span="24">
-        <el-card class="chart-card">
-          <template #header>
-            <div class="chart-header">
-              <div class="chart-title">
-                <el-icon><Odometer /></el-icon>
-                <span>CPU 使用率</span>
+        <!-- 系统负载 -->
+        <div class="chart-card chart-wide">
+          <div class="chart-header">
+            <div class="chart-title">
+              <div class="chart-icon">
+                <el-icon><TrendCharts /></el-icon>
               </div>
-              <div class="chart-badge">实时</div>
+              <div class="chart-info">
+                <span class="chart-name">系统负载</span>
+                <span class="chart-desc">CPU 负载趋势</span>
+              </div>
             </div>
-          </template>
-          <div ref="cpuChartRef" class="chart-container"></div>
-        </el-card>
-      </el-col>
-    </el-row>
+            <div class="chart-badge">
+              <span class="pulse-dot"></span>
+              实时
+            </div>
+          </div>
+          <div ref="loadChartRef" class="chart-container"></div>
+        </div>
+      </div>
+
+      <!-- CPU 使用率 -->
+      <div class="chart-card chart-full">
+        <div class="chart-header">
+          <div class="chart-title">
+            <div class="chart-icon">
+              <el-icon><Odometer /></el-icon>
+            </div>
+            <div class="chart-info">
+              <span class="chart-name">CPU 使用率</span>
+              <span class="chart-desc">处理器占用情况</span>
+            </div>
+          </div>
+          <div class="chart-badge">
+            <span class="pulse-dot"></span>
+            实时
+          </div>
+        </div>
+        <div ref="cpuChartRef" class="chart-container"></div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -92,11 +127,22 @@ let memChart: echarts.ECharts | null = null
 let loadChart: echarts.ECharts | null = null
 let cpuChart: echarts.ECharts | null = null
 let refreshTimer: number | null = null
+let clockTimer: number | null = null
 
-const statValues = ref<Array<any>>([])
+const currentTime = ref('')
 const animatedCounts = ref([0, 0, 0, 0])
 const targetCounts = ref([0, 0, 0, 0])
 let animationTimer: number | null = null
+
+function updateTime() {
+  const now = new Date()
+  currentTime.value = now.toLocaleTimeString('zh-CN', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit',
+    hour12: false 
+  })
+}
 
 interface StatItem {
   title: string
@@ -181,30 +227,37 @@ async function fetchStats() {
   }
 }
 
-// ECharts 绿色主题配置
+// ECharts 主题自适应配置
 function getChartOption(type: 'pie' | 'bar', data: any, options: any = {}) {
-  const colors = ['#00ff88', '#00ccff', '#ffaa00']
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light'
+  const primaryColor = isDark ? '#8b5cf6' : '#409eff'
+  const textColor = isDark ? '#a1a1aa' : '#606266'
+  const bgColor = isDark ? '#111113' : '#ffffff'
+  const borderColor = isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(64, 158, 255, 0.3)'
+  const colors = isDark 
+    ? ['#8b5cf6', '#3b82f6', '#22c55e'] 
+    : ['#409eff', '#67c23a', '#e6a23c']
 
   if (type === 'pie') {
     return {
       tooltip: {
         trigger: 'item',
-        backgroundColor: 'rgba(15, 23, 35, 0.9)',
-        borderColor: '#00ff88',
-        textStyle: { color: '#e0e6ed' }
+        backgroundColor: bgColor,
+        borderColor: borderColor,
+        textStyle: { color: textColor }
       },
       legend: {
         bottom: 0,
-        textStyle: { color: '#8b9bb4' }
+        textStyle: { color: textColor }
       },
       series: [{
         type: 'pie',
-        radius: ['40%', '70%'],
+        radius: ['45%', '70%'],
         center: ['50%', '45%'],
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 8,
-          borderColor: 'rgba(15, 23, 35, 0.9)',
+          borderColor: bgColor,
           borderWidth: 2
         },
         label: { show: false },
@@ -212,7 +265,7 @@ function getChartOption(type: 'pie' | 'bar', data: any, options: any = {}) {
           label: { show: false },
           itemStyle: {
             shadowBlur: 20,
-            shadowColor: 'rgba(0, 255, 136, 0.5)'
+            shadowColor: primaryColor + '60'
           }
         },
         data: data
@@ -225,47 +278,47 @@ function getChartOption(type: 'pie' | 'bar', data: any, options: any = {}) {
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        backgroundColor: 'rgba(15, 23, 35, 0.9)',
-        borderColor: '#00ff88',
-        textStyle: { color: '#e0e6ed' }
+        backgroundColor: bgColor,
+        borderColor: borderColor,
+        textStyle: { color: textColor }
       },
       legend: {
         data: options.legendData || [],
-        textStyle: { color: '#8b9bb4' }
+        textStyle: { color: textColor }
       },
       grid: {
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '10%',
+        top: '12%',
         containLabel: true
       },
       xAxis: {
         type: 'category',
         data: options.xData || [],
-        axisLine: { lineStyle: { color: 'rgba(0, 255, 136, 0.2)' } },
-        axisLabel: { color: '#8b9bb4' }
+        axisLine: { lineStyle: { color: borderColor } },
+        axisLabel: { color: textColor }
       },
       yAxis: {
         type: 'value',
         max: options.yMax || 'dataMax',
-        axisLine: { lineStyle: { color: 'rgba(0, 255, 136, 0.2)' } },
-        axisLabel: { color: '#8b9bb4' },
-        splitLine: { lineStyle: { color: 'rgba(0, 255, 136, 0.08)' } }
+        axisLine: { lineStyle: { color: borderColor } },
+        axisLabel: { color: textColor },
+        splitLine: { lineStyle: { color: borderColor + '40' } }
       },
       series: (options.seriesData || []).map((s: any, i: number) => ({
         ...s,
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: colors[i % colors.length] },
-            { offset: 1, color: colors[i % colors.length] + '80' }
+            { offset: 1, color: colors[i % colors.length] + '60' }
           ]),
-          borderRadius: [4, 4, 0, 0]
+          borderRadius: [6, 6, 0, 0]
         },
         emphasis: {
           itemStyle: {
             shadowBlur: 10,
-            shadowColor: 'rgba(0, 255, 136, 0.3)'
+            shadowColor: primaryColor + '40'
           }
         }
       }))
@@ -281,9 +334,12 @@ async function fetchMemChart() {
     if (res.data !== undefined && res.data !== null) {
       const usedPercent = res.data
       const freePercent = 100 - usedPercent
+      const isDark = document.documentElement.getAttribute('data-theme') !== 'light'
+      const usedColor = isDark ? '#8b5cf6' : '#409eff'
+      const freeColor = isDark ? '#1f1f23' : '#f0f2f5'
       const option = getChartOption('pie', [
-        { name: '已使用', value: usedPercent, itemStyle: { color: '#00ff88' } },
-        { name: '空闲', value: freePercent, itemStyle: { color: '#0f171f' } }
+        { name: '已使用', value: usedPercent, itemStyle: { color: usedColor } },
+        { name: '空闲', value: freePercent, itemStyle: { color: freeColor } }
       ])
       memChart?.setOption(option)
     }
@@ -360,17 +416,22 @@ async function loadData() {
 
 onMounted(async () => {
   await nextTick()
+  updateTime()
   initCharts()
   await loadData()
   refreshTimer = window.setInterval(() => {
     loadData()
   }, 5000)
+  clockTimer = window.setInterval(updateTime, 1000)
   window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
   if (refreshTimer !== null) {
     clearInterval(refreshTimer)
+  }
+  if (clockTimer !== null) {
+    clearInterval(clockTimer)
   }
   if (animationTimer !== null) {
     cancelAnimationFrame(animationTimer)
@@ -383,212 +444,329 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
-// Home 页面样式 - 使用 CSS 变量
+// Home 页面样式 - Premium 风格
 
 .home-page {
   .page-header {
-    margin-bottom: 24px;
+    margin-bottom: 32px;
 
-    .page-title {
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-bottom: 8px;
-      background: linear-gradient(135deg, var(--text-primary), var(--primary-color));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
     }
 
-    .page-subtitle {
-      color: var(--text-muted);
-      font-size: 14px;
+    .header-text {
+      .page-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        letter-spacing: -0.5px;
+      }
+
+      .page-subtitle {
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+    }
+
+    .header-actions {
+      .time-display {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        padding: 12px 20px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-lg);
+
+        .time-label {
+          font-size: 11px;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-bottom: 4px;
+        }
+
+        .time-value {
+          font-size: 20px;
+          font-weight: 600;
+          font-family: var(--font-family-mono);
+          color: var(--primary-color);
+          letter-spacing: 2px;
+        }
+      }
     }
   }
+}
 
-  .stat-cards {
-    margin-bottom: 24px;
+.stats-section {
+  margin-bottom: 32px;
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+
+    @media (max-width: 1200px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
   }
 
   .stat-card {
     position: relative;
     background: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
+    border-radius: var(--border-radius-xl);
     padding: 24px;
     cursor: pointer;
-    transition: all var(--transition-base);
     overflow: hidden;
-    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    &::before {
-      content: '';
+    &:hover {
+      transform: translateY(-4px);
+      border-color: var(--primary-glow-strong);
+      box-shadow: 0 20px 40px var(--shadow-color), 0 0 0 1px var(--border-color-light);
+    }
+
+    .stat-bg-gradient {
       position: absolute;
       top: 0;
-      left: 0;
       right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
-      opacity: 0;
-      transition: opacity var(--transition-base);
+      width: 120px;
+      height: 120px;
+      background: radial-gradient(circle at center, var(--primary-glow) 0%, transparent 70%);
+      opacity: 0.5;
+      transition: opacity 0.3s;
     }
 
-    &:hover::before {
+    &:hover .stat-bg-gradient {
       opacity: 1;
     }
 
-    .stat-glow {
-      position: absolute;
-      top: -50%;
-      right: -50%;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle, rgba(var(--primary-color), 0.1) 0%, transparent 70%);
-      opacity: 0;
-      transition: opacity var(--transition-base);
-    }
-
-    &:hover .stat-glow {
-      opacity: 1;
-    }
-
-    .stat-icon-wrapper {
+    .stat-content {
       position: relative;
-      width: 60px;
-      height: 60px;
-      margin-bottom: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
 
-      .stat-icon-bg {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        border-radius: 12px;
-        background: rgba(var(--primary-color), 0.1);
-        border: 1px solid rgba(var(--primary-color), 0.2);
+      .stat-icon-wrapper {
+        position: relative;
+        width: 48px;
+        height: 48px;
+        flex-shrink: 0;
+
+        .stat-icon-bg {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          border-radius: 14px;
+          background: var(--primary-glow);
+          border: 1px solid var(--border-color-light);
+          transition: all 0.3s;
+        }
+
+        .stat-icon {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          color: var(--primary-color);
+        }
       }
 
-      .stat-icon {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: var(--primary-color);
+      &:hover .stat-icon-bg {
+        transform: scale(1.05);
       }
     }
 
     .stat-info {
+      flex: 1;
+
       .stat-value {
-        font-size: 36px;
+        font-size: 32px;
         font-weight: 700;
         color: var(--text-primary);
         font-family: var(--font-family-mono);
         line-height: 1.2;
+        letter-spacing: -1px;
       }
 
       .stat-label {
-        font-size: 14px;
+        font-size: 13px;
         color: var(--text-secondary);
-        margin-top: 4px;
+        margin-top: 6px;
+        font-weight: 500;
       }
     }
 
-    .stat-decoration {
+    .stat-trend {
       position: absolute;
-      bottom: 16px;
-      right: 16px;
+      top: 24px;
+      right: 24px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 4px;
+      padding: 4px 8px;
+      background: rgba(34, 197, 94, 0.1);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--success-color);
+      font-weight: 600;
 
-      .dec-line {
-        width: 30px;
-        height: 2px;
-        background: rgba(var(--primary-color), 0.3);
-      }
-
-      .dec-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--primary-color);
+      .el-icon {
+        font-size: 12px;
       }
     }
 
-    // 不同状态的颜色变体
+    &.stat-0 {
+      .stat-icon-bg { background: rgba(144, 147, 153, 0.15); }
+      .stat-icon { color: #909399; }
+      .stat-trend { display: none; }
+    }
+
     &.stat-1 {
-      .stat-icon-bg { background: rgba(var(--info-color), 0.1); border-color: rgba(var(--info-color), 0.2); }
+      .stat-icon-bg { background: rgba(59, 130, 246, 0.15); }
       .stat-icon { color: var(--info-color); }
-      .dec-dot { background: var(--info-color); }
+      .stat-trend { background: rgba(59, 130, 246, 0.1); color: var(--info-color); }
     }
 
     &.stat-2 {
-      .stat-icon-bg { background: rgba(var(--success-color), 0.1); border-color: rgba(var(--success-color), 0.2); }
+      .stat-icon-bg { background: rgba(34, 197, 94, 0.15); }
       .stat-icon { color: var(--success-color); }
-      .dec-dot { background: var(--success-color); }
     }
 
     &.stat-3 {
-      .stat-icon-bg { background: rgba(var(--danger-color), 0.1); border-color: rgba(var(--danger-color), 0.2); }
+      .stat-icon-bg { background: rgba(239, 68, 68, 0.15); }
       .stat-icon { color: var(--danger-color); }
-      .dec-dot { background: var(--danger-color); }
+      .stat-trend { background: rgba(239, 68, 68, 0.1); color: var(--danger-color); }
     }
   }
+}
 
-  .charts-row {
-    margin-bottom: 24px;
+.charts-section {
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+    margin-bottom: 20px;
+
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr;
+    }
   }
 
   .chart-card {
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border-color) !important;
-    border-radius: var(--border-radius-lg) !important;
-    backdrop-filter: blur(10px);
-    transition: all var(--transition-base);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-xl);
+    padding: 24px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     &:hover {
-      border-color: var(--primary-glow) !important;
-      box-shadow: var(--shadow-glow);
-    }
-
-    :deep(.el-card__header) {
-      background: transparent !important;
-      border-bottom: 1px solid var(--border-color-light);
-      padding: 16px 20px;
+      border-color: var(--border-color-light);
+      box-shadow: 0 8px 32px var(--shadow-color);
     }
 
     .chart-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
+      margin-bottom: 20px;
 
       .chart-title {
         display: flex;
         align-items: center;
-        gap: 8px;
-        color: var(--text-primary);
-        font-size: 16px;
-        font-weight: 600;
+        gap: 12px;
 
-        .el-icon {
-          color: var(--primary-color);
+        .chart-icon {
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--primary-glow);
+          border-radius: 10px;
+
+          .el-icon {
+            font-size: 20px;
+            color: var(--primary-color);
+          }
+        }
+
+        .chart-info {
+          display: flex;
+          flex-direction: column;
+
+          .chart-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+          }
+
+          .chart-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+          }
         }
       }
 
       .chart-badge {
-        padding: 4px 10px;
-        background: rgba(var(--success-color), 0.1);
-        border: 1px solid rgba(var(--success-color), 0.3);
-        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        border-radius: 20px;
         font-size: 12px;
         color: var(--success-color);
+        font-weight: 500;
+
+        .pulse-dot {
+          width: 6px;
+          height: 6px;
+          background: var(--success-color);
+          border-radius: 50%;
+          animation: pulse 2s ease-in-out infinite;
+        }
       }
     }
 
     .chart-container {
-      height: 280px;
+      height: 260px;
     }
+
+    &.chart-wide {
+      .chart-container {
+        height: 220px;
+      }
+    }
+
+    &.chart-full {
+      .chart-container {
+        height: 200px;
+      }
+    }
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
   }
 }
 </style>

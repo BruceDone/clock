@@ -61,7 +61,7 @@ onMounted(() => {
 .slider {
   position: absolute;
   left: 4px;
-  width: calc(33.333% - 2px);
+  width: calc(25% - 2px);
   height: calc(100% - 8px);
   background: var(--primary-color);
   border-radius: 16px;

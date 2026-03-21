@@ -139,42 +139,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getRunningTasks, cancelTask, cancelRun, type RunningTaskInfo } from '@/api/task'
-
-interface StreamEvent {
-  id: number
-  ts: number
-  kind: 'task_start' | 'task_end' | 'stdout' | 'stderr' | 'meta' | string
-  runId?: string
-  tid?: number
-  cid?: number
-  taskName?: string
-  status?: string
-  durationMs?: number
-  msg?: string
-}
-
-interface TaskLog {
-  id: number
-  type: 'stdout' | 'stderr' | 'info'
-  message: string
-}
-
-interface TaskBlock {
-  tid: number
-  taskName: string
-  status: 'pending' | 'running' | 'success' | 'error' | 'cancelled'
-  duration?: number
-  logs: TaskLog[]
-}
-
-interface LogGroup {
-  id: number
-  runId?: string
-  timestamp: string
-  message?: string
-  type?: 'info' | 'success' | 'error' | 'warning'
-  tasks: TaskBlock[]
-}
+import type { StreamEvent, TaskBlock, LogGroup } from '@/types/model'
 
 const MAX_GROUPS = 100
 

@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	echoMiddleware "github.com/labstack/echo/v4/middleware"
@@ -46,6 +47,11 @@ func NewRouter(cfg *config.Config, handlers *Handlers, webapp embed.FS) *Router 
 
 // Setup 设置路由
 func (r *Router) Setup() *echo.Echo {
+	// 超时配置
+	r.engine.Server.ReadTimeout = 30 * time.Second
+	r.engine.Server.WriteTimeout = 30 * time.Second
+	r.engine.Server.IdleTimeout = 120 * time.Second
+
 	// 全局中间件
 	r.engine.Use(echoMiddleware.CORS())
 	r.engine.Use(middleware.Logger())
