@@ -448,7 +448,7 @@ func TestCancelRun_CancelledTasks(t *testing.T) {
 	taskRepo.tasks[1] = task
 
 	go func() {
-		executor.RunTask(task)
+		executor.RunTaskWithRunID(task, "test-run-cancel")
 	}()
 
 	time.Sleep(50 * time.Millisecond)
