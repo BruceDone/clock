@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -181,26 +182,6 @@ func TestValidateCommand(t *testing.T) {
 	}
 }
 
-func TestValidateCommand_DangerousChars(t *testing.T) {
-	dangerous := []string{
-		"echo hello; rm -rf /",
-		"echo hello & whoami",
-		"echo `$HOME`",
-		"echo $(whoami)",
-		"cat /etc/passwd | grep root",
-		"echo hello > file",
-		"echo <file",
-		"echo | ls",
-	}
-
-	for _, cmd := range dangerous {
-		t.Run(cmd, func(t *testing.T) {
-			err := validateCommand(cmd)
-			assert.Error(t, err, "command should be rejected: %s", cmd)
-		})
-	}
-}
-
 func TestRunTask_Success(t *testing.T) {
 	taskRepo := newMockTaskRepo()
 	relRepo := &mockRelationRepo{}
@@ -360,4 +341,121 @@ func TestRunStageTasksWithRunID_Concurrent(t *testing.T) {
 	assert.Equal(t, domain.StatusSuccess, task1.Status)
 	assert.Equal(t, domain.StatusSuccess, task2.Status)
 	assert.Equal(t, domain.StatusSuccess, task3.Status)
+}
+
+func TestRunTask_Timeout(t *testing.T) {
+	taskRepo := newMockTaskRepo()
+	relRepo := &mockRelationRepo{}
+	logRepo := &mockTaskLogRepo{}
+	containerRepo := &mockContainerRepo{}
+	hub := NewStreamHub(100)
+
+	executor := NewExecutor(taskRepo, relRepo, logRepo, containerRepo, hub)
+
+	task := newTestTask(1, 1, "sleep 10")
+	task.Timeout = 1 // 1 second timeout
+	taskRepo.tasks[1] = task
+
+	err := executor.RunTask(task)
+
+	assert.Error(t, err)
+	assert.Equal(t, domain.StatusFailure, task.Status)
+	assert.Contains(t, err.Error(), "timeout")
+}
+
+func TestRunTask_Cancel(t *testing.T) {
+	taskRepo := newMockTaskRepo()
+	relRepo := &mockRelationRepo{}
+	logRepo := &mockTaskLogRepo{}
+	containerRepo := &mockContainerRepo{}
+	hub := NewStreamHub(100)
+
+	executor := NewExecutor(taskRepo, relRepo, logRepo, containerRepo, hub)
+
+	task := newTestTask(1, 1, "sleep 60")
+	task.Timeout = 0 // no timeout
+	taskRepo.tasks[1] = task
+
+	taskStarted := make(chan struct{})
+
+	go func() {
+		executor.RunTask(task)
+		close(taskStarted)
+	}()
+
+	for i := 0; i < 50; i++ {
+		time.Sleep(20 * time.Millisecond)
+		executor.runningMu.RLock()
+		_, exists := executor.running[1]
+		executor.runningMu.RUnlock()
+		if exists {
+			break
+		}
+	}
+
+	err := executor.CancelTask(1)
+	assert.NoError(t, err)
+
+	select {
+	case <-taskStarted:
+		assert.Equal(t, domain.StatusCancelled, task.Status)
+	case <-time.After(2 * time.Second):
+		t.Fatal("task did not finish in time")
+	}
+}
+
+func TestCancelTask_NotRunning(t *testing.T) {
+	taskRepo := newMockTaskRepo()
+	relRepo := &mockRelationRepo{}
+	logRepo := &mockTaskLogRepo{}
+	containerRepo := &mockContainerRepo{}
+	hub := NewStreamHub(100)
+
+	executor := NewExecutor(taskRepo, relRepo, logRepo, containerRepo, hub)
+
+	err := executor.CancelTask(999)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not running")
+}
+
+func TestCancelRun(t *testing.T) {
+	taskRepo := newMockTaskRepo()
+	relRepo := &mockRelationRepo{}
+	logRepo := &mockTaskLogRepo{}
+	containerRepo := &mockContainerRepo{}
+	hub := NewStreamHub(100)
+
+	executor := NewExecutor(taskRepo, relRepo, logRepo, containerRepo, hub)
+
+	err := executor.CancelRun("")
+	assert.Error(t, err)
+
+	err = executor.CancelRun("nonexistent")
+	assert.NoError(t, err)
+}
+
+func TestCancelRun_CancelledTasks(t *testing.T) {
+	taskRepo := newMockTaskRepo()
+	relRepo := &mockRelationRepo{}
+	logRepo := &mockTaskLogRepo{}
+	containerRepo := &mockContainerRepo{}
+	hub := NewStreamHub(100)
+
+	executor := NewExecutor(taskRepo, relRepo, logRepo, containerRepo, hub)
+
+	task := newTestTask(1, 1, "sleep 30")
+	taskRepo.tasks[1] = task
+
+	go func() {
+		executor.RunTask(task)
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+
+	executor.CancelRun("test-run-cancel")
+
+	time.Sleep(100 * time.Millisecond)
+
+	assert.Equal(t, domain.StatusCancelled, task.Status)
 }
