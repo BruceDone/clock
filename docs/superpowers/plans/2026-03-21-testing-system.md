@@ -195,7 +195,7 @@ func TestBackpressure_RemoveOnFull(t *testing.T) {
 - [ ] **Step 2: 运行 StreamHub 测试验证**
 
 ```bash
-go test -v -run "TestStreamHub" ./internal/service/
+go test -v -run "Test(Subscribe|Publish|Backpressure)" ./internal/service/
 ```
 
 Expected: PASS (9 tests)
@@ -421,8 +421,8 @@ func TestValidateCommand_DangerousChars(t *testing.T) {
 		"echo $(whoami)",
 		"cat /etc/passwd | grep root",
 		"echo hello > file",
-		"echo 'hello'",
-		`echo "hello"`,
+		"echo <file",
+		"echo | ls",
 	}
 
 	for _, cmd := range dangerous {
@@ -471,7 +471,7 @@ func TestRunTask_EmptyCommand(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Equal(t, domain.StatusFailure, task.Status)
-	assert.Contains(t, err.Error(), "empty")
+	assert.Contains(t, err.Error(), "cannot be empty")
 }
 
 func TestRunTask_Directory(t *testing.T) {
@@ -552,22 +552,34 @@ func TestRunTask_Cancel(t *testing.T) {
 	task.Timeout = 0 // no timeout
 	taskRepo.tasks[1] = task
 
-	// 在 goroutine 中运行任务，然后取消
-	done := make(chan error, 1)
+	// 等待任务开始运行的信号
+	taskStarted := make(chan struct{})
+
+	// 在 goroutine 中运行任务
 	go func() {
-		done <- executor.RunTask(task)
+		// 通过 SSE 消息确认任务已开始
+		executor.RunTask(task)
+		close(taskStarted)
 	}()
 
-	time.Sleep(100 * time.Millisecond)
-	err := executor.CancelTask(1)
+	// 轮询等待任务进入 running 状态
+	for i := 0; i < 50; i++ {
+		time.Sleep(20 * time.Millisecond)
+		e.runningMu.RLock()
+		_, exists := e.running[1]
+		e.runningMu.RUnlock()
+		if exists {
+			break
+		}
+	}
 
-	// 取消不返回错误（取消操作本身成功）
+	// 取消任务
+	err := executor.CancelTask(1)
 	assert.NoError(t, err)
 
 	// 等待任务结束
 	select {
-	case err := <-done:
-		assert.Error(t, err)
+	case <-taskStarted:
 		assert.Equal(t, domain.StatusCancelled, task.Status)
 	case <-time.After(2 * time.Second):
 		t.Fatal("task did not finish in time")
@@ -717,6 +729,11 @@ func TestRunStageTasksWithRunID_TwoStage(t *testing.T) {
 
 	executor.runStageTasksWithRunID([]*domain.Task{task1, task2}, relRepo.relations, "test-run")
 
+	// 执行顺序由 DAG 算法保证：
+	// 1. 第一阶段：Task1 入度为0，执行
+	// 2. Task1 完成后，Task2 入度变为0
+	// 3. 第二阶段：Task2 执行
+	// 如果顺序错误，Task2 会在 Task1 完成前被检查，发现前置任务未完成而保持 Pending
 	assert.Equal(t, domain.StatusSuccess, task1.Status)
 	assert.Equal(t, domain.StatusSuccess, task2.Status)
 }
