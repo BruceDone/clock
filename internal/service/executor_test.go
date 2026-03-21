@@ -182,6 +182,26 @@ func TestValidateCommand(t *testing.T) {
 	}
 }
 
+func TestValidateCommand_DangerousChars(t *testing.T) {
+	dangerous := []string{
+		"echo hello; rm -rf /",
+		"echo hello & whoami",
+		"echo `$HOME`",
+		"echo $(whoami)",
+		"cat /etc/passwd | grep root",
+		"echo hello > file",
+		"echo <file",
+		"echo | ls",
+	}
+
+	for _, cmd := range dangerous {
+		t.Run(cmd, func(t *testing.T) {
+			err := validateCommand(cmd)
+			assert.Error(t, err, "command should be rejected: %s", cmd)
+		})
+	}
+}
+
 func TestRunTask_Success(t *testing.T) {
 	taskRepo := newMockTaskRepo()
 	relRepo := &mockRelationRepo{}
